@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>J.A.R.V.I.S — Interface</title>
+
+<!-- Socket.IO client — talks to jarvismain.py Flask server -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cyan:  #00e5ff;
+  --blue:  #0078d4;
+  --dim:   #003d5c;
+  --red:   #ff3c5c;
+  --gold:  #ffc940;
+  --green: #4ade80;
+  --bg:    #010d18;
+  --panel: rgba(0,20,40,0.85);
+  --glow:  0 0 12px #00e5ff88, 0 0 30px #00e5ff33;
+  --font-hud:  'Orbitron', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ── AUTH OVERLAY ── */
+#auth-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(1,13,24,.97);
+  flex-direction: column; gap: 20px;
+}
+.auth-box {
+  border: 1px solid var(--dim);
+  border-top: 2px solid var(--cyan);
+  padding: 40px 48px;
+  text-align: center;
+  min-width: 320px;
+  background: var(--panel);
+  box-shadow: 0 0 60px rgba(0,229,255,.1);
+}
+.auth-box .auth-logo {
+  font-family: var(--font-hud);
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: .25em;
+  color: var(--cyan);
+  text-shadow: var(--glow);
+  margin-bottom: 6px;
+}
+.auth-box .auth-sub {
+  font-size: .6rem; letter-spacing: .2em; color: var(--blue);
+  margin-bottom: 28px;
+}
+.auth-box input[type=password] {
+  width: 100%;
+  background: transparent;
+  border: none; border-bottom: 1px solid var(--dim);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: .9rem;
+  padding: 8px 4px;
+  outline: none;
+  text-align: center;
+  letter-spacing: .2em;
+  margin-bottom: 20px;
+}
+.auth-box input[type=password]:focus { border-bottom-color: var(--cyan); }
+.auth-box button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-hud);
+  font-size: .7rem;
+  letter-spacing: .15em;
+  padding: 10px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.auth-box button:hover { background: rgba(0,229,255,.1); box-shadow: var(--glow); }
+#auth-msg { font-size: .65rem; letter-spacing: .12em; color: var(--red); min-height: 16px; margin-top: 10px; }
+
+/* ── SHELL ── */
+.shell {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 1120px;
+  padding: 20px 24px 36px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 16px;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--dim);
+  padding-bottom: 12px;
+}
+.logo { font-family: var(--font-hud); font-weight: 900; font-size: 1.6rem; letter-spacing: .25em; color: var(--cyan); text-shadow: var(--glow); }
+.logo span { color: var(--red); }
+.tagline { font-size: .6rem; letter-spacing: .2em; color: var(--blue); margin-top: 2px; }
+.sys-status { display: flex; gap: 14px; align-items: center; font-size: .6rem; letter-spacing: .12em; }
+
+/* ── CONN DOT ── */
+#conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); transition: all .4s; }
+#conn-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* ── WAKE BADGE ── */
+#wake-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .6rem; letter-spacing: .15em;
+  padding: 4px 12px;
+  border: 1px solid var(--dim); border-radius: 2px;
+  background: rgba(0,10,25,.6);
+  transition: all .3s;
+}
+#wake-badge.awake { border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(74,222,128,.3); }
+#wake-badge .dot-sm { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; animation: blink 1.2s infinite; }
+
+/* ── CLOCK STRIP ── */
+.clock-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--dim); border-left: 3px solid var(--cyan);
+  padding: 8px 20px; border-radius: 2px;
+}
+#clock { font-family: var(--font-hud); font-size: 1.9rem; letter-spacing: .2em; color: var(--cyan); text-shadow: var(--glow); }
+#date-str { font-size: .65rem; color: var(--blue); letter-spacing: .14em; }
+.status-pills { display: flex; gap: 8px; }
+.pill {
+  font-size: .57rem; letter-spacing: .1em; border: 1px solid var(--dim);
+  padding: 4px 10px; border-radius: 2px; color: var(--cyan); position: relative; overflow: hidden;
+}
+.pill::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(0,229,255,.08), transparent);
+  animation: sweep 2.6s infinite;
+}
+@keyframes sweep { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+/* ── MAIN GRID ── */
+.main-grid { display: grid; grid-template-columns: 250px 1fr; gap: 14px; }
+
+/* ── PANEL ── */
+.panel { background: var(--panel); border: 1px solid var(--dim); border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
+.panel-hdr {
+  font-family: var(--font-hud); font-size: .6rem; letter-spacing: .2em; color: var(--blue);
+  padding: 7px 14px; border-bottom: 1px solid var(--dim); background: rgba(0,120,212,.08);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── ARC REACTOR ── */
+.arc-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 0; gap: 10px; }
+.arc { position: relative; width: 140px; height: 140px; }
+.arc svg { width: 100%; height: 100%; }
+.arc-center {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-hud); font-size: .5rem; letter-spacing: .12em; color: var(--cyan);
+  text-shadow: var(--glow); text-align: center; line-height: 1.5;
+}
+.arc-status-lbl { font-family: var(--font-hud); font-size: .65rem; letter-spacing: .2em; color: var(--cyan); text-shadow: var(--glow); }
+@keyframes spin-cw  { to { transform: rotate(360deg); }  }
+@keyframes spin-ccw { to { transform: rotate(-360deg); } }
+.ring1 { animation: spin-cw  5s linear infinite; transform-origin: center; }
+.ring2 { animation: spin-ccw 8s linear infinite; transform-origin: center; }
+.ring3 { animation: spin-cw  3s linear infinite; transform-origin: center; }
+
+/* ── CMD LIST ── */
+.cmd-list { padding: 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
+.cmd-item { display: flex; align-items: flex-start; gap: 6px; font-size: .6rem; padding: 5px 7px; border-left: 2px solid transparent; transition: all .2s; border-radius: 1px; }
+.cmd-item:hover { border-left-color: var(--cyan); background: rgba(0,229,255,.05); }
+.cmd-item .kw { color: var(--gold); white-space: nowrap; min-width: 96px; }
+.cmd-item .desc { color: #4a9bb5; }
+
+/* ── LOG TERMINAL ── */
+.log-panel { display: flex; flex-direction: column; }
+.log-body { flex: 1; padding: 14px; overflow-y: auto; font-size: .7rem; line-height: 1.75; min-height: 300px; max-height: 380px; }
+.log-line { display: flex; gap: 10px; margin-bottom: 1px; }
+.log-line .ts { color: #1a4a5c; min-width: 50px; }
+.log-line .msg { color: #7dd3fc; white-space: pre-wrap; word-break: break-word; }
+.log-line.speak .msg { color: var(--cyan); }
+.log-line.input .msg { color: var(--gold); }
+.log-line.sys   .msg { color: #a78bfa; }
+.log-line.ok    .msg { color: var(--green); }
+.log-line.warn  .msg { color: var(--gold); }
+.log-line.error .msg { color: var(--red); }
+.log-line.heard .msg { color: #f0abfc; }
+
+/* ── INPUT ROW ── */
+.input-row {
+  display: flex; gap: 8px; padding: 10px 14px;
+  border-top: 1px solid var(--dim); background: rgba(0,10,25,.6);
+}
+.prompt-sym { color: var(--cyan); font-size: 1rem; line-height: 36px; }
+#cmd-input {
+  flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--dim);
+  color: var(--cyan); font-family: var(--font-mono); font-size: .78rem;
+  padding: 6px 4px; outline: none; transition: border-color .2s;
+}
+#cmd-input:focus { border-bottom-color: var(--cyan); }
+#cmd-input::placeholder { color: var(--dim); }
+.mic-btn, .send-btn {
+  background: transparent; border: 1px solid var(--dim); color: var(--cyan);
+  font-family: var(--font-hud); font-size: .58rem; letter-spacing: .1em;
+  padding: 6px 12px; cursor: pointer; border-radius: 2px; transition: all .2s;
+}
+.mic-btn:hover, .send-btn:hover { background: rgba(0,229,255,.1); border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,229,255,.2); }
+.mic-btn.active { background: rgba(255,60,92,.15); border-color: var(--red); color: var(--red); box-shadow: 0 0 10px rgba(255,60,92,.35); }
+
+/* ── METRICS ── */
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.metric-card { background: var(--panel); border: 1px solid var(--dim); border-top: 2px solid var(--cyan); padding: 10px 14px; border-radius: 2px; }
+.m-lbl { font-size: .53rem; letter-spacing: .15em; color: var(--blue); margin-bottom: 4px; }
+.m-val { font-family: var(--font-hud); font-size: 1.25rem; color: var(--cyan); text-shadow: var(--glow); }
+.m-bar { height: 2px; background: var(--dim); margin-top: 6px; border-radius: 1px; overflow: hidden; }
+.m-bar-fill { height: 100%; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); border-radius: 1px; transition: width .6s ease; }
+
+footer { text-align: center; font-size: .56rem; letter-spacing: .16em; color: var(--dim); padding-top: 8px; border-top: 1px solid rgba(0,61,92,.35); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+@media(max-width:700px){
+  .main-grid { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: repeat(2,1fr); }
+  #clock { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<!-- ═══════════════════════ AUTH OVERLAY ═══════════════════════ -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">J<span style="color:#ff3c5c">.</span>A<span style="color:#ff3c5c">.</span>R<span style="color:#ff3c5c">.</span>V<span style="color:#ff3c5c">.</span>I<span style="color:#ff3c5c">.</span>S</div>
+    <div class="auth-sub">AUTHORIZATION REQUIRED — ENTER ACCESS CODE</div>
+    <input type="password" id="pw-input" placeholder="· · · · · · · ·" autocomplete="off"/>
+    <button onclick="doAuth()">AUTHENTICATE ▸</button>
+    <div id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MAIN UI ═══════════════════════════ -->
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
+      <div class="tagline">JUST A RATHER VERY INTELLIGENT SYSTEM &nbsp;·&nbsp; v2.0</div>
+    </div>
+    <div class="sys-status">
+      <span id="wake-badge"><span class="dot-sm"></span><span id="wake-txt">STANDBY</span></span>
+      <div id="conn-dot" title="Server connection"></div>
+      <span id="conn-label" style="color:var(--dim)">DISCONNECTED</span>
+    </div>
+  </header>
+
+  <!-- CLOCK STRIP -->
+  <div class="clock-strip">
+    <div>
+      <div id="clock">00:00:00</div>
+      <div id="date-str">—</div>
+    </div>
+    <div class="status-pills">
+      <div class="pill">NEURAL LINK · ACTIVE</div>
+      <div class="pill">VOICE ENGINE · READY</div>
+      <div class="pill">THREAT LEVEL · NONE</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Arc Reactor -->
+      <div class="panel">
+        <div class="panel-hdr">⬡ &nbsp;POWER CORE</div>
+        <div class="arc-wrap">
+          <div class="arc">
+            <svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="70" cy="70" r="65" fill="none" stroke="#003d5c" stroke-width="1"/>
+              <g class="ring1"><circle cx="70" cy="70" r="58" fill="none" stroke="#00e5ff" stroke-width="1.4" stroke-dasharray="12 6" opacity=".7"/></g>
+              <g class="ring2"><circle cx="70" cy="70" r="48" fill="none" stroke="#0078d4" stroke-width="1"   stroke-dasharray="20 8" opacity=".6"/></g>
+              <g class="ring3"><circle cx="70" cy="70" r="38" fill="none" stroke="#00e5ff" stroke-width=".8"  stroke-dasharray="4 10" opacity=".5"/></g>
+              <polygon points="70,42 90,54 90,78 70,90 50,78 50,54" fill="rgba(0,229,255,.04)" stroke="#00e5ff" stroke-width="1.2"/>
+              <polygon points="70,52 82,59 82,73 70,80 58,73 58,59" fill="rgba(0,229,255,.07)" stroke="#00e5ff" stroke-width=".8"/>
+              <circle cx="70" cy="70" r="16" fill="rgba(0,229,255,.15)" stroke="#00e5ff" stroke-width="1.5"/>
+              <circle cx="70" cy="70" r="8"  fill="rgba(0,229,255,.5)"/>
+              <circle cx="70" cy="70" r="4"  fill="#00e5ff"/>
+              <circle cx="70" cy="70" r="20" fill="none" stroke="#00e5ff" stroke-width=".5" opacity=".4">
+                <animate attributeName="r"       from="20" to="65" dur="2.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" from=".5" to="0"  dur="2.5s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            <div class="arc-center">MARK<br/>VII</div>
+          </div>
+          <div class="arc-status-lbl" id="arc-status">STANDBY</div>
+        </div>
+      </div>
+
+      <!-- Command reference -->
+      <div class="panel" style="flex:1">
+        <div class="panel-hdr">◈ &nbsp;VOICE COMMANDS</div>
+        <div class="cmd-list">
+          <div class="cmd-item"><span class="kw">"wake up"</span><span class="desc">Activate Jarvis</span></div>
+          <div class="cmd-item"><span class="kw">"go to sleep"</span><span class="desc">Suspend session</span></div>
+          <div class="cmd-item"><span class="kw">"the time"</span><span class="desc">Current time</span></div>
+          <div class="cmd-item"><span class="kw">"the date"</span><span class="desc">Today's date</span></div>
+          <div class="cmd-item"><span class="kw">"internet speed"</span><span class="desc">Run speedtest</span></div>
+          <div class="cmd-item"><span class="kw">"open ..."</span><span class="desc">Launch application</span></div>
+          <div class="cmd-item"><span class="kw">"google ..."</span><span class="desc">Google search</span></div>
+          <div class="cmd-item"><span class="kw">"youtube ..."</span><span class="desc">YouTube search</span></div>
+          <div class="cmd-item"><span class="kw">"wikipedia ..."</span><span class="desc">Wikipedia lookup</span></div>
+          <div class="cmd-item"><span class="kw">"weather"</span><span class="desc">Maharashtra temp</span></div>
+          <div class="cmd-item"><span class="kw">"ipl score"</span><span class="desc">Live cricket score</span></div>
+          <div class="cmd-item"><span class="kw">"screenshot"</span><span class="desc">Capture screen</span></div>
+          <div class="cmd-item"><span class="kw">"add task ..."</span><span class="desc">Add a task</span></div>
+          <div class="cmd-item"><span class="kw">"my schedule"</span><span class="desc">View tasks</span></div>
+          <div class="cmd-item"><span class="kw">"remember that..."</span><span class="desc">Store memory</span></div>
+          <div class="cmd-item"><span class="kw">"what do you remember"</span><span class="desc">Read memory</span></div>
+          <div class="cmd-item"><span class="kw">"calculate ..."</span><span class="desc">WolframAlpha</span></div>
+          <div class="cmd-item"><span class="kw">"tired"</span><span class="desc">Play music</span></div>
+          <div class="cmd-item"><span class="kw">"news"</span><span class="desc">Latest headlines</span></div>
+          <div class="cmd-item"><span class="kw">"volume up/down"</span><span class="desc">Volume control</span></div>
+          <div class="cmd-item"><span class="kw">"focus mode"</span><span class="desc">Deep work mode</span></div>
+          <div class="cmd-item"><span class="kw">"shutdown system"</span><span class="desc">PC shutdown</span></div>
+          <div class="cmd-item"><span class="kw">"finally sleep"</span><span class="desc">Kill Jarvis</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TERMINAL -->
+    <div class="panel log-panel">
+      <div class="panel-hdr">▸ &nbsp;SYSTEM TERMINAL &nbsp;<span style="color:var(--dim)">// LIVE OUTPUT FROM jarvismain.py</span></div>
+      <div class="log-body" id="log-body"></div>
+      <div class="input-row">
+        <span class="prompt-sym">›</span>
+        <input id="cmd-input" type="text" placeholder='Type command or press MIC... (e.g. "wake up")' autocomplete="off" spellcheck="false"/>
+        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">⏺ MIC</button>
+        <button class="send-btn" onclick="sendCmd()">SEND ▸</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="m-lbl">POWER OUTPUT</div>
+      <div class="m-val">3.2 GW</div>
+      <div class="m-bar"><div class="m-bar-fill" style="width:78%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="m-lbl">NEURAL LOAD</div>
+      <div class="m-val" id="m-cpu">--</div>
+      <div class="m-bar"><div class="m-bar-fill" id="cpu-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="m-lbl">MEMORY CORE</div>
+      <div class="m-val">6.1 TB</div>
+      <div class="m-bar"><div class="m-bar-fill" style="width:61%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="m-lbl">SESSION TIME</div>
+      <div class="m-val" id="m-uptime">00:00</div>
+      <div class="m-bar"><div class="m-bar-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <footer>J.A.R.V.I.S INTERFACE &nbsp;·&nbsp; MARK VII &nbsp;·&nbsp; LINKED TO jarvismain.py &nbsp;·&nbsp; STARK INDUSTRIES</footer>
+</div>
+
+<script>
+// ── Stars ─────────────────────────────────────────────────────
+(function(){
+  const c = document.getElementById('stars'), ctx = c.getContext('2d');
+  let stars = [];
+  function resize(){ c.width=innerWidth; c.height=innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  for(let i=0;i<180;i++) stars.push({x:Math.random()*3000, y:Math.random()*2000, r:Math.random()*1.2+.2, a:Math.random()});
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s=>{
+      s.a += .004*(Math.random()-.5);
+      s.a = Math.max(.05, Math.min(1, s.a));
+      ctx.beginPath();
+      ctx.arc(s.x%c.width, s.y%c.height, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,229,255,${s.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Clock ─────────────────────────────────────────────────────
+function updateClock(){
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const days=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+  const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('date-str').textContent =
+    `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+setInterval(updateClock,1000); updateClock();
+
+// ── Session uptime ─────────────────────────────────────────────
+const startTime = Date.now();
+setInterval(()=>{
+  const s = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('m-uptime').textContent =
+    `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+},1000);
+
+// ── Neural load flicker ────────────────────────────────────────
+setInterval(()=>{
+  const v = Math.floor(Math.random()*35+10);
+  document.getElementById('m-cpu').textContent = v+'%';
+  document.getElementById('cpu-bar').style.width = v+'%';
+},3000);
+
+// ══════════════════════════════════════════════════════════════
+//  SOCKET.IO — connects to jarvismain.py Flask server
+// ══════════════════════════════════════════════════════════════
+const socket = io();   // connects to same host (localhost:5000)
+
+socket.on('connect', () => {
+  document.getElementById('conn-dot').classList.add('connected');
+  document.getElementById('conn-label').textContent = 'CONNECTED';
+  document.getElementById('conn-label').style.color = 'var(--green)';
+  addLog('Connected to Jarvis backend server.', 'ok');
+});
+
+socket.on('disconnect', () => {
+  document.getElementById('conn-dot').classList.remove('connected');
+  document.getElementById('conn-label').textContent = 'DISCONNECTED';
+  document.getElementById('conn-label').style.color = 'var(--red)';
+  addLog('Lost connection to backend server.', 'error');
+});
+
+// Receive log messages from jarvismain.py
+socket.on('log', (data) => {
+  addLog(data.msg, data.type || '');
+});
+
+// Receive state changes (awake/sleep)
+socket.on('state', (data) => {
+  setAwake(data.awake);
+  if(data.shutdown){
+    setTimeout(()=> addLog('Server shut down.','error'), 1000);
+  }
+});
+
+// ── LOG TERMINAL ───────────────────────────────────────────────
+const logBody = document.getElementById('log-body');
+function addLog(msg, type=''){
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const ts = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
+  logBody.appendChild(line);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+// Boot log
+addLog('Initializing J.A.R.V.I.S interface...', 'sys');
+addLog('Connecting to backend server at localhost:5000...', '');
+
+// ── WAKE STATE ─────────────────────────────────────────────────
+function setAwake(val){
+  const badge = document.getElementById('wake-badge');
+  const txt   = document.getElementById('wake-txt');
+  const arc   = document.getElementById('arc-status');
+  if(val){
+    badge.classList.add('awake');
+    txt.textContent = 'ACTIVE';
+    arc.textContent = 'ONLINE';
+    arc.style.color = 'var(--green)';
+    arc.style.textShadow = '0 0 10px rgba(74,222,128,.5)';
+  } else {
+    badge.classList.remove('awake');
+    txt.textContent = 'STANDBY';
+    arc.textContent = 'STANDBY';
+    arc.style.color = '';
+    arc.style.textShadow = '';
+  }
+}
+
+// ── AUTH ───────────────────────────────────────────────────────
+async function doAuth(){
+  const pw  = document.getElementById('pw-input').value;
+  const msg = document.getElementById('auth-msg');
+  msg.textContent = 'Authenticating...';
+  msg.style.color = 'var(--blue)';
+  try {
+    const res  = await fetch('/api/auth', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: pw})
+    });
+    const data = await res.json();
+    if(data.success){
+      document.getElementById('auth-overlay').style.display='none';
+      addLog(data.message, 'ok');
+    } else {
+      msg.textContent = data.message;
+      msg.style.color = 'var(--red)';
+      document.getElementById('pw-input').value = '';
+    }
+  } catch(e){
+    msg.textContent = 'Cannot reach server. Is jarvismain.py running?';
+    msg.style.color = 'var(--red)';
+  }
+}
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter') doAuth();
+});
+
+// ── SEND COMMAND ───────────────────────────────────────────────
+function sendCmd(){
+  const input = document.getElementById('cmd-input');
+  const val   = input.value.trim();
+  if(!val) return;
+  socket.emit('command', {query: val});
+  input.value = '';
+}
+document.getElementById('cmd-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter') sendCmd();
+});
+
+// ── MIC BUTTON (uses Python backend speech recognition) ────────
+let micActive = false;
+function toggleMic(){
+  const btn = document.getElementById('mic-btn');
+  if(!micActive){
+    micActive = true;
+    btn.classList.add('active');
+    btn.textContent = '◼ STOP';
+    socket.emit('mic_control', {action: 'start'});
+  } else {
+    micActive = false;
+    btn.classList.remove('active');
+    btn.textContent = '⏺ MIC';
+    socket.emit('mic_control', {action: 'stop'});
+  }
+}
+</script>
+</body>
+</html>
