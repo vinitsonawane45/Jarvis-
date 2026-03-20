@@ -1,6 +1,8 @@
-# 🤖 Jarvis - Python Voice Assistant
+# 🤖 J.A.R.V.I.S — Python Voice Assistant
 
-A Python-based personal AI voice assistant inspired by Iron Man's J.A.R.V.I.S. (Just A Rather Very Intelligent System). Jarvis can listen to your voice commands and perform a wide range of tasks — from searching the web to setting alarms, sending WhatsApp messages, and more.
+A Python-based personal AI voice assistant inspired by Iron Man's **J.A.R.V.I.S.** (Just A Rather Very Intelligent System). Jarvis listens to your voice commands and performs a wide range of tasks — from searching the web to setting alarms, sending WhatsApp messages, and more.
+
+> **v2.0 Update** — Now features a fully linked **Iron Man HUD-style web UI** powered by Flask + Socket.IO. All commands, voice input, and responses are handled in real time between the browser and Python backend.
 
 ---
 
@@ -8,23 +10,27 @@ A Python-based personal AI voice assistant inspired by Iron Man's J.A.R.V.I.S. (
 
 | Feature | Description |
 |---|---|
-| 🎙️ Voice Recognition | Listens and responds to voice commands |
-| 🔍 Web Search | Searches Google/Wikipedia instantly |
+| 🎙️ Voice Recognition | Listens and responds to voice commands via Python `SpeechRecognition` |
+| 🖥️ Web UI | Iron Man HUD-style interface linked live to the Python backend |
+| 🔍 Web Search | Searches Google, YouTube, Wikipedia instantly |
 | 📰 News Reader | Reads out the latest news headlines |
 | 🔔 Alarm | Set alarms with custom messages |
 | 📖 Dictionary | Look up definitions of words |
 | 🌐 Translator | Translate text between languages |
 | 💬 WhatsApp Messaging | Send WhatsApp messages via voice |
-| 🧮 Calculator | Perform arithmetic calculations |
+| 🧮 Calculator | WolframAlpha-powered calculations |
 | 🎵 Music Player | Play and skip songs |
 | ⌨️ Keyboard Shortcuts | Control your PC with keyboard automation |
 | 🎮 Games | Play mini text-based games |
 | 🧘 Focus Mode | Enable focus mode and track focus sessions |
 | 📊 Focus Graph | Visualize your focus session history |
 | 👋 Greeting | Greets you based on time of day |
-| 🔐 Password Manager | Store and retrieve passwords |
-| 📝 Task & Notes | Remember tasks and notes |
-| 🖥️ App Launcher | Open and close applications |
+| 🔐 Password Manager | Change and store passwords securely |
+| 📝 Task & Notes | Remember tasks, notes, and schedules |
+| 🖥️ App Launcher | Open and close applications by voice |
+| 📸 Screenshot | Capture your screen instantly |
+| 🌡️ Weather | Fetch live temperature for Maharashtra |
+| 🏏 IPL Score | Get live cricket scores from Cricbuzz |
 
 ---
 
@@ -33,29 +39,30 @@ A Python-based personal AI voice assistant inspired by Iron Man's J.A.R.V.I.S. (
 ```
 Jarvis/
 │
-├── Jarvis_main.py          # Main entry point — orchestrates all modules
-├── INTRO.py                # Intro animation / startup sequence
+├── jarvismain.py           # ⭐ Main backend — Flask + SocketIO server
+├── jarvis_ui.html          # ⭐ Web UI — Iron Man HUD (open in browser)
+│
 ├── GreetMe.py              # Time-based greeting module
-├── SearchNow.py            # Web/Wikipedia search
+├── SearchNow.py            # Google / YouTube / Wikipedia search
 ├── NewsRead.py             # Fetches and reads news
 ├── alarm.py                # Alarm functionality
 ├── Alarmtext.txt           # Stores alarm data
-├── Dictapp.py              # Dictionary lookup
+├── Dictapp.py              # Dictionary lookup & app open/close
 ├── Translator.py           # Language translation
 ├── Whatsapp.py             # WhatsApp message sender
-├── Calculatenumbers.py     # Calculator module
+├── Calculatenumbers.py     # Calculator / WolframAlpha module
 ├── play_next_song.py       # Music playback control
-├── keyboard.py             # Keyboard automation
+├── keyboard.py             # Keyboard automation (volume etc.)
 ├── game.py                 # Mini games
-├── FocusMode.py            # Focus/productivity mode
+├── FocusMode.py            # Focus / productivity mode
 ├── FocusGraph.py           # Focus session graph visualization
-├── open and closing.py     # App open/close handler
-├── app.py                  # Application utilities
+├── INTRO.py                # Intro animation / startup sequence
 ├── intents.json            # NLP intents configuration
 ├── Installer.py            # Auto-installs dependencies
 ├── requirements.txt        # Python dependencies
-├── password.txt            # Local password storage
-├── Remember.txt            # Notes/reminders storage
+│
+├── password.txt            # ⚠️ Local password storage (do NOT commit)
+├── Remember.txt            # Notes / reminders storage
 ├── tasks.txt               # Task list storage
 ├── focus.txt               # Focus session log
 └── notification.mp3        # Notification sound
@@ -70,6 +77,7 @@ Jarvis/
 - Python 3.8 or higher
 - A working microphone
 - Internet connection
+- Google Chrome (recommended for the UI)
 
 ### 1. Clone the Repository
 
@@ -80,7 +88,7 @@ cd Jarvis-
 
 ### 2. Install Dependencies
 
-Run the auto-installer script:
+Run the auto-installer:
 
 ```bash
 python Installer.py
@@ -92,63 +100,172 @@ Or install manually:
 pip install -r requirements.txt
 ```
 
-### 3. Run Jarvis
+### 3. Install New UI Dependencies
+
+The web UI requires two additional packages:
 
 ```bash
-python Jarvis_main.py
+pip install flask flask-socketio
 ```
+
+If `pyaudio` fails to install:
+
+```bash
+pip install pipwin
+pipwin install pyaudio
+```
+
+---
+
+## 🚀 How to Run (v2.0 with Web UI)
+
+### Step 1 — Start the backend server
+
+```bash
+python jarvismain.py
+```
+
+You will see:
+
+```
+=======================================================
+  J.A.R.V.I.S  — Server starting...
+  ▶  Open in browser:  http://localhost:5000
+  Default password:    1234
+=======================================================
+```
+
+### Step 2 — Open the UI
+
+Open **Google Chrome** and navigate to:
+
+```
+http://localhost:5000
+```
+
+### Step 3 — Authenticate
+
+Enter the password (`1234` by default) in the login screen.  
+To change it, say or type: `change password`
+
+### Step 4 — Wake Jarvis
+
+Say or type:
+
+```
+wake up
+```
+
+Jarvis will greet you and become fully active. All commands now work via voice (MIC button) or by typing in the terminal panel.
+
+> **Keep the Command Prompt window open** while using Jarvis — closing it stops the server.  
+> To stop, press `Ctrl + C` in the terminal.
+
+---
+
+## 🔗 How the UI and Python Are Linked
+
+```
+[jarvis_ui.html]  ←──── Socket.IO (WebSocket) ────→  [jarvismain.py]
+   (Browser)                                           (Flask Server)
+```
+
+| UI Action | Python Backend Action |
+|---|---|
+| Enter password → Authenticate | Calls `/api/auth` → checks `password.txt` |
+| Type command → Send | `socket.emit("command")` → `run_command()` executes it |
+| Click MIC button | Starts Python `SpeechRecognition` mic listener |
+| Jarvis speaks | `pyttsx3` speaks AND sends text to the UI terminal |
+| Wake / Sleep state | Python emits `state` event → UI badge updates live |
+
+---
+
+## 🗣️ Voice Commands
+
+```
+"wake up"                        → Activate Jarvis
+"go to sleep"                    → Suspend session
+"the time"                       → Current time
+"the date"                       → Today's date
+"internet speed"                 → Run a speed test
+"weather" / "temperature"        → Maharashtra live temperature
+"ipl score"                      → Live cricket score
+"open Chrome"                    → Launch an application
+"google Python tutorials"        → Google search
+"youtube lo-fi music"            → YouTube search
+"wikipedia Albert Einstein"      → Wikipedia lookup
+"screenshot"                     → Capture your screen
+"add task buy groceries"         → Add a task
+"show my schedule"               → View all tasks
+"remember that meeting at 5pm"   → Store a note
+"what do you remember"           → Read stored notes
+"calculate 25 times 4"           → WolframAlpha calculation
+"translate hello to Spanish"     → Translate text
+"tired"                          → Play music
+"news"                           → Latest headlines
+"volume up" / "volume down"      → Volume control
+"pause" / "play" / "mute"        → Media controls
+"focus mode"                     → Enable focus mode
+"open whatsapp"                  → Open WhatsApp Web
+"shutdown the system"            → Shut down the PC
+"change password"                → Change Jarvis password
+"finally sleep"                  → Shut down Jarvis server
+```
+
+---
+
+## 🐛 Bug Fixes in v2.0
+
+- **Wake up not working** — `pyttsx3` engine was initialized inside the wrong indentation block (inside the `elif` for wrong password). It only initialized when the password was *incorrect*, so Jarvis crashed silently on correct login before ever reaching the `"wake up"` listener. Fixed by moving engine initialization to the top of the file.
+- **Mic context error** — The microphone background thread was calling `on_command()` directly, which requires a Flask request context. Fixed by calling `run_command()` directly from the mic thread instead.
+- **404 on UI load** — `send_from_directory(".")` used a relative path that broke when Python was run from a different directory. Fixed using `BASE_DIR = os.path.dirname(os.path.abspath(__file__))` so the path is always resolved relative to `jarvismain.py` itself.
+- **File path errors** — `password.txt`, `tasks.txt`, `Remember.txt` now all use absolute `BASE_DIR` paths so they are always found regardless of working directory.
 
 ---
 
 ## 📦 Dependencies
 
-Key libraries used in this project:
-
-- `SpeechRecognition` — Voice input processing
-- `pyttsx3` — Text-to-speech engine
-- `pywhatkit` — WhatsApp messaging & YouTube
-- `wikipedia` — Wikipedia search
-- `newsapi-python` — News fetching
-- `deep-translator` — Language translation
-- `PyDictionary` — Word definitions
-- `pyautogui` — Keyboard/mouse automation
-- `matplotlib` — Focus session graph plotting
-- `playsound` — Audio notification playback
-
----
-
-## 🚀 Usage
-
-Once running, Jarvis will greet you and wait for a wake command. Speak clearly into your microphone. Example commands:
-
 ```
-"Jarvis, search Python programming"
-"Jarvis, what's the news today?"
-"Jarvis, set an alarm for 7 AM"
-"Jarvis, translate hello to Spanish"
-"Jarvis, send a WhatsApp message to Mom"
-"Jarvis, what is the meaning of ephemeral"
-"Jarvis, calculate 25 times 4"
-"Jarvis, play music"
-"Jarvis, enable focus mode"
-"Jarvis, open Chrome"
-"Jarvis, remember: dentist appointment on Friday"
+flask
+flask-socketio
+SpeechRecognition
+pyttsx3
+pyaudio
+requests
+pyautogui
+plyer
+pygame
+speedtest-cli
+beautifulsoup4
+pywhatkit
+wikipedia
+newsapi-python
+deep-translator
+PyDictionary
+matplotlib
+playsound
 ```
 
 ---
 
 ## 🔧 Configuration
 
-- **Alarm messages** are stored in `Alarmtext.txt`
-- **Tasks and notes** are stored in `Remember.txt` and `tasks.txt`
-- **Focus sessions** are logged in `focus.txt` and visualized via `FocusGraph.py`
-- **Intents** for NLP command matching are defined in `intents.json`
+| File | Purpose |
+|---|---|
+| `password.txt` | Jarvis login password (default: `1234`) |
+| `Remember.txt` | Stores notes and reminders |
+| `tasks.txt` | Stores your daily schedule |
+| `focus.txt` | Logs focus session history |
+| `Alarmtext.txt` | Stores alarm time data |
+| `intents.json` | NLP command intent definitions |
 
 ---
 
-## 🛡️ Notes & Warnings
+## 🛡️ Security Notes
 
-> ⚠️ `password.txt` stores passwords in plain text locally. Do **not** share this file or commit it to a public repository. Consider adding it to `.gitignore`.
+> ⚠️ `password.txt` stores your password in **plain text** locally. Do **not** share or commit this file to a public repository.
+
+Add this to your `.gitignore`:
 
 ```gitignore
 password.txt
@@ -156,7 +273,22 @@ Remember.txt
 tasks.txt
 focus.txt
 __pycache__/
+*.pyc
 ```
+
+---
+
+## ❓ Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `ModuleNotFoundError: flask` | `pip install flask flask-socketio` |
+| `pyaudio` install fails | `pip install pipwin` then `pipwin install pyaudio` |
+| Browser shows 404 | Make sure `jarvis_ui.html` is in the **same folder** as `jarvismain.py` |
+| Browser shows "Cannot connect" | Make sure `python jarvismain.py` is still running in CMD |
+| Mic not working | Run Command Prompt as **Administrator** |
+| "Wake up" not responding | Check microphone permissions in Windows Settings |
+| `Working outside of request context` | Make sure you are using the latest `jarvismain.py` (v2.0 fix applied) |
 
 ---
 
@@ -185,4 +317,4 @@ This project is open-source. Feel free to use, modify, and distribute it with at
 
 ---
 
-<p align="center">Made with ❤️ in Python</p>
+<p align="center">Made with ❤️ in Python &nbsp;·&nbsp; v2.0 — Now with Web UI</p>
