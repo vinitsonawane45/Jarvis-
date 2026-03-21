@@ -3,582 +3,1170 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>J.A.R.V.I.S — Interface</title>
-
-<!-- Socket.IO client — talks to jarvismain.py Flask server -->
+<title>J.A.R.V.I.S</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
-
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c:#00d4ff;--c2:#0099cc;--red:#ff2244;--gold:#ffc940;--grn:#00ff88;
+  --bg:#000d1a;--p:rgba(0,20,40,0.9);--bdr:rgba(0,212,255,0.25);
+  --glow:0 0 20px rgba(0,212,255,0.55),0 0 60px rgba(0,212,255,0.15);
+  --ff1:'Orbitron',sans-serif;--ff3:'Share Tech Mono',monospace;
+}
+html,body{background:var(--bg);color:var(--c);font-family:var(--ff3);
+  min-height:100vh;overflow:hidden;cursor:crosshair}
 
-:root {
-  --cyan:  #00e5ff;
-  --blue:  #0078d4;
-  --dim:   #003d5c;
-  --red:   #ff3c5c;
-  --gold:  #ffc940;
-  --green: #4ade80;
-  --bg:    #010d18;
-  --panel: rgba(0,20,40,0.85);
-  --glow:  0 0 12px #00e5ff88, 0 0 30px #00e5ff33;
-  --font-hud:  'Orbitron', sans-serif;
-  --font-mono: 'Share Tech Mono', monospace;
+/* ── BACKGROUND CANVASES ── */
+#cv-stars,#cv-grid,#cv-radar{position:fixed;inset:0;pointer-events:none}
+#cv-stars{z-index:0}
+#cv-grid{z-index:1;opacity:.35}
+#cv-radar{z-index:2}
+body::after{
+  content:'';position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,.012) 2px,rgba(0,212,255,.012) 4px);
+  animation:scanmove 10s linear infinite;
 }
+@keyframes scanmove{0%{background-position:0 0}100%{background-position:0 100px}}
 
-body {
-  background: var(--bg);
-  color: var(--cyan);
-  font-family: var(--font-mono);
-  min-height: 100vh;
-  overflow-x: hidden;
-  display: flex; flex-direction: column; align-items: center;
+/* ═══════════════════════════════════════════════
+   AUTH OVERLAY
+═══════════════════════════════════════════════ */
+#overlay{
+  position:fixed;inset:0;z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,3,10,.98);
+  transition:opacity .8s cubic-bezier(.4,0,.2,1),background .8s;
 }
+#overlay.sleeping{background:rgba(0,3,10,.85);pointer-events:all;cursor:pointer}
+#overlay.sleeping #ov-card{opacity:.3;transform:scale(.96) translateY(6px)}
+#overlay.waking{background:rgba(0,20,55,.92)}
+#overlay.out{opacity:0;pointer-events:none}
+#cv-auth{position:absolute;inset:0;pointer-events:none;z-index:0}
+/* corner brackets */
+#overlay::before,#overlay::after{
+  content:'';position:absolute;width:110px;height:110px;
+  border-color:rgba(0,212,255,.3);border-style:solid;
+  pointer-events:none;z-index:1;transition:all 1.2s ease;
+}
+#overlay::before{top:22px;left:22px;border-width:2px 0 0 2px}
+#overlay::after{bottom:22px;right:22px;border-width:0 2px 2px 0}
+#overlay.waking::before,#overlay.waking::after{
+  width:calc(50% - 22px);height:calc(50% - 22px);border-color:rgba(0,212,255,.7);
+}
+/* scan sweep */
+.scan-sweep{
+  position:absolute;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.6),transparent);
+  animation:sweep-dn 4s linear infinite;pointer-events:none;z-index:1;
+}
+@keyframes sweep-dn{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+#ov-card{
+  position:relative;z-index:2;
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  transition:opacity .6s ease,transform .6s ease;
+}
+/* ── Logo ── */
+.auth-logo-block{display:flex;flex-direction:column;align-items:center;margin-bottom:24px;animation:fd .8s ease .1s both}
+@keyframes fd{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:none}}
+.auth-logo{font-family:var(--ff1);font-weight:900;font-size:3rem;letter-spacing:.4em;color:var(--c);text-shadow:var(--glow);line-height:1}
+.auth-logo .l{display:inline-block;animation:li .6s ease both}
+.auth-logo .l:nth-child(1){animation-delay:.1s}.auth-logo .l:nth-child(2){animation-delay:.15s}
+.auth-logo .l:nth-child(3){animation-delay:.2s}.auth-logo .l:nth-child(4){animation-delay:.25s}
+.auth-logo .l:nth-child(5){animation-delay:.3s}.auth-logo .l:nth-child(6){animation-delay:.35s}
+.auth-logo .l:nth-child(7){animation-delay:.4s}.auth-logo .l:nth-child(8){animation-delay:.45s}
+.auth-logo .l:nth-child(9){animation-delay:.5s}.auth-logo .l:nth-child(10){animation-delay:.55s}.auth-logo .l:nth-child(11){animation-delay:.6s}
+@keyframes li{from{opacity:0;transform:translateY(-18px) scale(.8)}to{opacity:1;transform:none}}
+.auth-tagline{font-size:.56rem;letter-spacing:.26em;color:var(--c2);margin-top:6px;animation:fd .8s ease .65s both}
+/* ── Arc Reactor ── */
+.auth-arc{position:relative;width:210px;height:210px;margin-bottom:20px;animation:arc-pop .9s cubic-bezier(.34,1.56,.64,1) .3s both}
+@keyframes arc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+.auth-arc svg{width:100%;height:100%}
+.r1{animation:cw 3.5s linear infinite;transform-origin:center}
+.r2{animation:ccw 6s linear infinite;transform-origin:center}
+.r3{animation:cw 10s linear infinite;transform-origin:center}
+.r4{animation:ccw 15s linear infinite;transform-origin:center}
+#overlay.sleeping .r1{animation-duration:16s}
+#overlay.sleeping .r2{animation-duration:24s}
+#overlay.sleeping .r3{animation-duration:38s}
+#overlay.waking .r1{animation-duration:.3s}
+#overlay.waking .r2{animation-duration:.5s}
+@keyframes cw{to{transform:rotate(360deg)}}
+@keyframes ccw{to{transform:rotate(-360deg)}}
+.arc-core-pulse{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.arc-core-pulse::after{content:'';width:26px;height:26px;border-radius:50%;background:rgba(0,212,255,.25);animation:cb 2s ease-in-out infinite}
+@keyframes cb{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(0,212,255,.4)}50%{transform:scale(1.18);box-shadow:0 0 0 14px rgba(0,212,255,0)}}
+/* ── Waveform ── */
+#wave{display:flex;align-items:center;gap:5px;height:44px;margin-bottom:18px;animation:fu .6s ease .7s both}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#wave span{display:block;width:4px;border-radius:2px;background:var(--c);box-shadow:0 0 7px var(--c);animation:wb .85s ease-in-out infinite}
+#wave span:nth-child(1){animation-delay:0s;height:10px}
+#wave span:nth-child(2){animation-delay:.1s;height:24px}
+#wave span:nth-child(3){animation-delay:.2s;height:38px}
+#wave span:nth-child(4){animation-delay:.3s;height:28px}
+#wave span:nth-child(5){animation-delay:.15s;height:44px}
+#wave span:nth-child(6){animation-delay:.25s;height:28px}
+#wave span:nth-child(7){animation-delay:.35s;height:38px}
+#wave span:nth-child(8){animation-delay:.05s;height:24px}
+#wave span:nth-child(9){animation-delay:.2s;height:10px}
+@keyframes wb{0%,100%{transform:scaleY(.2)}50%{transform:scaleY(1)}}
+#wave.slow span{animation-duration:3.2s}
+#wave.slow span:nth-child(3),#wave.slow span:nth-child(5),#wave.slow span:nth-child(7){height:14px}
+/* ── Status text ── */
+#ov-title{font-family:var(--ff1);font-size:.95rem;font-weight:700;letter-spacing:.25em;color:var(--c);text-shadow:var(--glow);margin-bottom:4px;text-align:center;animation:fu .6s ease .8s both}
+#ov-sub{font-size:.58rem;letter-spacing:.18em;color:var(--c2);text-align:center;min-height:18px;animation:fu .6s ease .9s both}
+/* ── Boot bar ── */
+#boot-bar{width:280px;height:1px;background:rgba(0,212,255,.12);margin:12px 0;display:none}
+#boot-fill{height:100%;width:0%;background:var(--c);box-shadow:0 0 8px var(--c);transition:width .5s ease}
+/* ── Mic button ── */
+#mic-request-btn{
+  display:none;background:transparent;border:1px solid rgba(0,212,255,.5);color:var(--c);
+  font-family:var(--ff1);font-size:.6rem;letter-spacing:.2em;padding:13px 32px;
+  cursor:pointer;margin-top:8px;transition:all .25s;position:relative;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+}
+#mic-request-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.08),transparent);pointer-events:none}
+#mic-request-btn:hover{background:rgba(0,212,255,.1);border-color:var(--c);box-shadow:var(--glow)}
+#mic-request-btn.show{display:block}
+/* ── AUTH CARD ── */
+#auth-card{display:none;flex-direction:column;align-items:center;gap:0;width:400px;animation:ac-in .7s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes ac-in{from{opacity:0;transform:scale(.88) translateY(20px)}to{opacity:1;transform:none}}
+#auth-card.show{display:flex}
+.ac-top{width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--c),var(--gold),var(--c),transparent);background-size:200%;animation:topbar 2.5s linear infinite}
+@keyframes topbar{0%{background-position:0%}100%{background-position:200%}}
+.ac-body{
+  width:100%;padding:30px 34px 26px;
+  background:rgba(0,10,24,.93);
+  border:1px solid rgba(0,212,255,.18);border-top:none;
+  position:relative;overflow:hidden;
+}
+.ac-body::before{content:'';position:absolute;top:0;left:0;width:60px;height:60px;background:radial-gradient(circle at 0% 0%,rgba(0,212,255,.07),transparent 70%);pointer-events:none}
+.ac-body::after{content:'';position:absolute;bottom:0;right:0;width:60px;height:60px;background:radial-gradient(circle at 100% 100%,rgba(255,201,64,.05),transparent 70%);pointer-events:none}
+.ac-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.ac-title{font-family:var(--ff1);font-size:.58rem;letter-spacing:.2em;color:var(--c2)}
+.ac-dots{display:flex;gap:6px}
+.ac-dot{width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,212,255,.4);animation:dp 2s ease infinite}
+.ac-dot:nth-child(1){animation-delay:0s;background:rgba(0,212,255,.2)}
+.ac-dot:nth-child(2){animation-delay:.3s;background:rgba(255,201,64,.2);border-color:rgba(255,201,64,.4)}
+.ac-dot:nth-child(3){animation-delay:.6s;background:rgba(0,255,136,.2);border-color:rgba(0,255,136,.4)}
+@keyframes dp{0%,100%{transform:scale(1)}50%{transform:scale(1.4)}}
+/* password wrap */
+.pw-wrap{
+  position:relative;border:1px solid rgba(0,212,255,.2);background:rgba(0,5,15,.8);
+  transition:border-color .3s,box-shadow .3s;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+}
+.pw-wrap:focus-within{border-color:rgba(0,212,255,.6);box-shadow:0 0 0 1px rgba(0,212,255,.15),inset 0 0 20px rgba(0,212,255,.04)}
+.pw-wrap.pw-error{border-color:rgba(255,34,68,.6);box-shadow:0 0 0 1px rgba(255,34,68,.2)}
+.pw-wrap.pw-ok{border-color:rgba(0,255,136,.6);box-shadow:0 0 0 1px rgba(0,255,136,.2)}
+.pw-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:.7rem;color:rgba(0,212,255,.45);pointer-events:none}
+#auth-pw{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--c);font-family:var(--ff1);font-size:1.15rem;
+  padding:16px 16px 16px 34px;letter-spacing:.38em;caret-color:var(--c);
+}
+#auth-pw::placeholder{color:rgba(0,212,255,.15);font-size:.65rem;letter-spacing:.15em;font-family:var(--ff3)}
+/* pin dots */
+.pin-dots{display:flex;gap:10px;justify-content:center;padding:10px 0 14px}
+.pin-dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,212,255,.3);background:transparent;transition:all .15s ease}
+.pin-dot.filled{background:var(--c);border-color:var(--c);box-shadow:0 0 8px var(--c)}
+.pin-dot.dot-err{background:var(--red);border-color:var(--red);box-shadow:0 0 8px var(--red);animation:dot-shake .4s ease}
+.pin-dot.dot-ok{background:var(--grn);border-color:var(--grn);box-shadow:0 0 8px var(--grn)}
+@keyframes dot-shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+/* auth button */
+#auth-btn{
+  width:100%;background:transparent;border:1px solid rgba(0,212,255,.4);color:var(--c);
+  font-family:var(--ff1);font-size:.65rem;letter-spacing:.25em;padding:14px;
+  cursor:pointer;transition:all .22s;margin-top:4px;position:relative;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+}
+#auth-btn::before{
+  content:'';position:absolute;left:-100%;top:0;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.12),transparent);
+  transition:left .4s ease;
+}
+#auth-btn:hover{background:rgba(0,212,255,.08);border-color:var(--c);box-shadow:var(--glow)}
+#auth-btn:hover::before{left:140%}
+#auth-btn:active{transform:scale(.98)}
+#auth-btn.loading{pointer-events:none;opacity:.7}
+/* auth message */
+#auth-msg{font-size:.58rem;letter-spacing:.12em;color:var(--red);min-height:16px;text-align:center;margin-top:10px}
+#auth-msg.shake{animation:card-shake .4s ease}
+@keyframes card-shake{0%,100%{transform:none}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+/* divider */
+.ac-divider{display:flex;align-items:center;gap:12px;margin:14px 0 12px;color:rgba(0,212,255,.2);font-size:.53rem;letter-spacing:.2em}
+.ac-divider::before,.ac-divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.14),transparent)}
+/* attempts */
+.attempt-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:.5rem;letter-spacing:.12em;color:rgba(0,212,255,.28)}
+#att-bars{display:flex;gap:4px}
+.att-bar{width:20px;height:3px;border-radius:1px;background:rgba(0,212,255,.18);transition:all .3s}
+.att-bar.used{background:var(--red);box-shadow:0 0 4px var(--red)}
+/* retry mic */
+#retry-mic-btn{
+  width:100%;background:transparent;border:1px solid rgba(0,212,255,.14);color:rgba(0,212,255,.45);
+  font-family:var(--ff3);font-size:.58rem;letter-spacing:.12em;padding:10px;cursor:pointer;transition:all .2s;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+}
+#retry-mic-btn:hover{border-color:rgba(0,212,255,.35);color:var(--c);background:rgba(0,212,255,.05)}
+/* wake hints */
+#wake-hints{display:none;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px;animation:fu .6s ease both}
+#wake-hints.show{display:flex}
+.w-hint{font-size:.54rem;letter-spacing:.1em;border:1px solid rgba(0,212,255,.18);padding:8px 14px;color:var(--c2);background:rgba(0,212,255,.05);text-align:center;clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%);transition:all .2s}
+.w-hint:hover{border-color:var(--bdr);background:rgba(0,212,255,.1);color:var(--c)}
+.w-hint strong{display:block;color:var(--gold);font-family:var(--ff1);font-size:.54rem;letter-spacing:.14em;margin-bottom:3px}
+/* success flash */
+#success-flash{position:fixed;inset:0;z-index:300;background:rgba(0,212,255,.07);pointer-events:none;opacity:0;transition:opacity .3s}
+#success-flash.flash{opacity:1}
 
-#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
+/* ═══════════════════════════════════════════════
+   MAIN UI
+═══════════════════════════════════════════════ */
+.shell{
+  position:relative;z-index:10;max-width:1200px;margin:0 auto;
+  padding:22px 28px 32px;min-height:100vh;
+  display:grid;grid-template-rows:auto auto 1fr auto;gap:16px;
 }
+/* header */
+.hud-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--bdr);position:relative}
+.hud-top::after{content:'';position:absolute;bottom:-1px;left:0;height:1px;background:linear-gradient(90deg,var(--c),transparent);animation:scan-ln 3s ease-in-out infinite}
+@keyframes scan-ln{0%,100%{width:18%}50%{width:68%}}
+.logo{font-family:var(--ff1);font-weight:900;font-size:1.75rem;letter-spacing:.3em;color:var(--c);text-shadow:var(--glow)}
+.logo em{color:var(--red);font-style:normal}
+.logo-sub{font-size:.55rem;letter-spacing:.22em;color:var(--c2);margin-top:3px}
+.hud-right{display:flex;gap:12px;align-items:center}
+.pill{font-size:.54rem;letter-spacing:.1em;border:1px solid var(--bdr);padding:5px 13px;background:rgba(0,180,255,.07);position:relative;overflow:hidden;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)}
+.pill::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,212,255,.08),transparent);animation:shim 2.4s infinite}
+@keyframes shim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+/* clock */
+.clock-band{display:flex;align-items:center;gap:24px;background:var(--p);border:1px solid var(--bdr);border-left:3px solid var(--c);padding:10px 24px;position:relative;overflow:hidden;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.clock-band::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,212,255,.06),transparent 40%);pointer-events:none}
+#clk{font-family:var(--ff1);font-size:2.2rem;font-weight:700;letter-spacing:.15em;color:var(--c);text-shadow:var(--glow)}
+#clk-date{font-size:.62rem;letter-spacing:.18em;color:var(--c2)}
+.band-pills{display:flex;gap:8px;margin-left:auto}
+.bp{font-size:.52rem;letter-spacing:.1em;border:1px solid var(--bdr);padding:4px 12px;background:rgba(0,212,255,.05)}
+/* content grid */
+.content-grid{display:grid;grid-template-columns:1fr 330px;gap:16px}
+/* ── PANEL WRAPPER ── */
+.panel-main{background:var(--p);border:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.panel-main::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),var(--gold),var(--c),transparent);background-size:200%;animation:topbar 3s linear infinite}
+.p-hdr{font-family:var(--ff1);font-size:.57rem;letter-spacing:.2em;color:var(--c2);padding:9px 18px;border-bottom:1px solid var(--bdr);background:rgba(0,212,255,.04);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pdot{width:7px;height:7px;border-radius:50%;background:var(--grn);box-shadow:0 0 8px var(--grn);animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-/* ── AUTH OVERLAY ── */
-#auth-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(1,13,24,.97);
-  flex-direction: column; gap: 20px;
-}
-.auth-box {
-  border: 1px solid var(--dim);
-  border-top: 2px solid var(--cyan);
-  padding: 40px 48px;
-  text-align: center;
-  min-width: 320px;
-  background: var(--panel);
-  box-shadow: 0 0 60px rgba(0,229,255,.1);
-}
-.auth-box .auth-logo {
-  font-family: var(--font-hud);
-  font-size: 1.8rem;
-  font-weight: 900;
-  letter-spacing: .25em;
-  color: var(--cyan);
-  text-shadow: var(--glow);
-  margin-bottom: 6px;
-}
-.auth-box .auth-sub {
-  font-size: .6rem; letter-spacing: .2em; color: var(--blue);
-  margin-bottom: 28px;
-}
-.auth-box input[type=password] {
-  width: 100%;
-  background: transparent;
-  border: none; border-bottom: 1px solid var(--dim);
-  color: var(--cyan);
-  font-family: var(--font-mono);
-  font-size: .9rem;
-  padding: 8px 4px;
-  outline: none;
-  text-align: center;
-  letter-spacing: .2em;
-  margin-bottom: 20px;
-}
-.auth-box input[type=password]:focus { border-bottom-color: var(--cyan); }
-.auth-box button {
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
-  font-family: var(--font-hud);
-  font-size: .7rem;
-  letter-spacing: .15em;
-  padding: 10px;
-  cursor: pointer;
-  transition: all .2s;
-}
-.auth-box button:hover { background: rgba(0,229,255,.1); box-shadow: var(--glow); }
-#auth-msg { font-size: .65rem; letter-spacing: .12em; color: var(--red); min-height: 16px; margin-top: 10px; }
+/* ── MODE TABS ── */
+.mode-tabs{display:flex;gap:0;margin-left:auto}
+.mode-tab{font-family:var(--ff1);font-size:.5rem;letter-spacing:.14em;padding:4px 14px;cursor:pointer;border:1px solid var(--bdr);color:var(--c2);background:transparent;transition:all .2s;position:relative}
+.mode-tab:first-child{border-right:none;clip-path:polygon(6px 0%,100% 0%,100% 100%,0% 100%)}
+.mode-tab:last-child{clip-path:polygon(0% 0%,calc(100% - 6px) 0%,100% 100%,0% 100%)}
+.mode-tab.active{background:rgba(0,212,255,.12);color:var(--c);border-color:var(--c)}
+.mode-tab:hover:not(.active){background:rgba(0,212,255,.06);color:var(--c)}
 
-/* ── SHELL ── */
-.shell {
-  position: relative; z-index: 1;
-  width: 100%; max-width: 1120px;
-  padding: 20px 24px 36px;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  gap: 16px;
-  min-height: 100vh;
+/* ── MIC TOGGLE BUTTON (big, prominent) ── */
+#mic-toggle-wrap{
+  display:flex;align-items:center;justify-content:center;
+  padding:12px 18px;border-bottom:1px solid var(--bdr);
+  background:rgba(0,5,15,.6);gap:14px;
 }
-
-/* ── HEADER ── */
-header {
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--dim);
-  padding-bottom: 12px;
+#mic-big-btn{
+  display:flex;align-items:center;gap:10px;
+  background:transparent;border:1px solid rgba(0,212,255,.35);color:var(--c);
+  font-family:var(--ff1);font-size:.6rem;letter-spacing:.18em;
+  padding:10px 24px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
 }
-.logo { font-family: var(--font-hud); font-weight: 900; font-size: 1.6rem; letter-spacing: .25em; color: var(--cyan); text-shadow: var(--glow); }
-.logo span { color: var(--red); }
-.tagline { font-size: .6rem; letter-spacing: .2em; color: var(--blue); margin-top: 2px; }
-.sys-status { display: flex; gap: 14px; align-items: center; font-size: .6rem; letter-spacing: .12em; }
+#mic-big-btn::before{content:'';position:absolute;left:-100%;top:0;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,212,255,.1),transparent);transition:left .4s}
+#mic-big-btn:hover{background:rgba(0,212,255,.08);border-color:var(--c);box-shadow:0 0 16px rgba(0,212,255,.2)}
+#mic-big-btn:hover::before{left:140%}
+#mic-big-btn.mic-live{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.08);animation:mic-glow .8s ease-in-out infinite}
+#mic-big-btn.mic-live:hover{box-shadow:0 0 20px rgba(255,34,68,.3)}
+@keyframes mic-glow{0%,100%{box-shadow:0 0 4px rgba(255,34,68,.3)}50%{box-shadow:0 0 18px rgba(255,34,68,.6)}}
+.mic-icon{font-size:1rem;transition:transform .2s}
+#mic-big-btn.mic-live .mic-icon{animation:mic-bounce .4s ease-in-out infinite alternate}
+@keyframes mic-bounce{from{transform:scale(1)}to{transform:scale(1.2)}}
+#mic-status-txt{font-size:.52rem;letter-spacing:.15em;color:var(--c2);font-family:var(--ff3)}
+/* mic waveform (shows when live) */
+#mic-wave{display:none;align-items:center;gap:3px;height:22px}
+#mic-wave.live{display:flex}
+#mic-wave span{display:block;width:3px;border-radius:1px;background:var(--red);box-shadow:0 0 5px var(--red);animation:mw .6s ease-in-out infinite}
+#mic-wave span:nth-child(1){animation-delay:0s;height:6px}
+#mic-wave span:nth-child(2){animation-delay:.1s;height:14px}
+#mic-wave span:nth-child(3){animation-delay:.2s;height:20px}
+#mic-wave span:nth-child(4){animation-delay:.1s;height:14px}
+#mic-wave span:nth-child(5){animation-delay:.05s;height:8px}
+@keyframes mw{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
 
-/* ── CONN DOT ── */
-#conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); transition: all .4s; }
-#conn-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
-
-/* ── WAKE BADGE ── */
-#wake-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: .6rem; letter-spacing: .15em;
-  padding: 4px 12px;
-  border: 1px solid var(--dim); border-radius: 2px;
-  background: rgba(0,10,25,.6);
-  transition: all .3s;
+/* ── CHAT VIEW ── */
+#chat-view{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:280px}
+.chat-bubble{display:flex;flex-direction:column;max-width:80%;animation:bubble-in .3s ease}
+@keyframes bubble-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.chat-bubble.user{align-self:flex-end;align-items:flex-end}
+.chat-bubble.jarvis{align-self:flex-start;align-items:flex-start}
+.bubble-name{font-family:var(--ff1);font-size:.45rem;letter-spacing:.18em;margin-bottom:4px}
+.chat-bubble.user   .bubble-name{color:var(--gold)}
+.chat-bubble.jarvis .bubble-name{color:var(--c)}
+.bubble-msg{
+  padding:10px 14px;font-size:.72rem;line-height:1.65;
+  position:relative;word-break:break-word;
 }
-#wake-badge.awake { border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(74,222,128,.3); }
-#wake-badge .dot-sm { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; animation: blink 1.2s infinite; }
-
-/* ── CLOCK STRIP ── */
-.clock-strip {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--panel); border: 1px solid var(--dim); border-left: 3px solid var(--cyan);
-  padding: 8px 20px; border-radius: 2px;
+.chat-bubble.user .bubble-msg{
+  background:rgba(255,201,64,.08);border:1px solid rgba(255,201,64,.25);color:#f0e6c0;
+  border-radius:2px 2px 0 2px;
+  clip-path:polygon(0 0,100% 0,100% 100%,6px 100%,0 calc(100% - 6px));
 }
-#clock { font-family: var(--font-hud); font-size: 1.9rem; letter-spacing: .2em; color: var(--cyan); text-shadow: var(--glow); }
-#date-str { font-size: .65rem; color: var(--blue); letter-spacing: .14em; }
-.status-pills { display: flex; gap: 8px; }
-.pill {
-  font-size: .57rem; letter-spacing: .1em; border: 1px solid var(--dim);
-  padding: 4px 10px; border-radius: 2px; color: var(--cyan); position: relative; overflow: hidden;
+.chat-bubble.jarvis .bubble-msg{
+  background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:#c8f0ff;
+  border-radius:2px 2px 2px 0;
+  clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,0 100%);
 }
-.pill::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(0,229,255,.08), transparent);
-  animation: sweep 2.6s infinite;
-}
-@keyframes sweep { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+.bubble-time{font-size:.48rem;color:rgba(0,212,255,.3);letter-spacing:.1em;margin-top:3px;font-family:var(--ff3)}
 
-/* ── MAIN GRID ── */
-.main-grid { display: grid; grid-template-columns: 250px 1fr; gap: 14px; }
+/* typing indicator */
+#typing-ind{display:none;align-self:flex-start;align-items:center;gap:8px;padding:8px 0}
+#typing-ind.show{display:flex}
+#typing-ind .t-dots{display:flex;gap:4px}
+#typing-ind .t-dots span{width:6px;height:6px;border-radius:50%;background:var(--c);animation:td .8s ease-in-out infinite}
+#typing-ind .t-dots span:nth-child(2){animation-delay:.15s}
+#typing-ind .t-dots span:nth-child(3){animation-delay:.3s}
+@keyframes td{0%,100%{transform:scale(.6);opacity:.4}50%{transform:scale(1);opacity:1}}
+#typing-ind .t-lbl{font-family:var(--ff3);font-size:.55rem;color:rgba(0,212,255,.45);letter-spacing:.1em}
 
-/* ── PANEL ── */
-.panel { background: var(--panel); border: 1px solid var(--dim); border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
-.panel-hdr {
-  font-family: var(--font-hud); font-size: .6rem; letter-spacing: .2em; color: var(--blue);
-  padding: 7px 14px; border-bottom: 1px solid var(--dim); background: rgba(0,120,212,.08);
-  display: flex; align-items: center; gap: 8px;
-}
-
-/* ── ARC REACTOR ── */
-.arc-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 0; gap: 10px; }
-.arc { position: relative; width: 140px; height: 140px; }
-.arc svg { width: 100%; height: 100%; }
-.arc-center {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-hud); font-size: .5rem; letter-spacing: .12em; color: var(--cyan);
-  text-shadow: var(--glow); text-align: center; line-height: 1.5;
-}
-.arc-status-lbl { font-family: var(--font-hud); font-size: .65rem; letter-spacing: .2em; color: var(--cyan); text-shadow: var(--glow); }
-@keyframes spin-cw  { to { transform: rotate(360deg); }  }
-@keyframes spin-ccw { to { transform: rotate(-360deg); } }
-.ring1 { animation: spin-cw  5s linear infinite; transform-origin: center; }
-.ring2 { animation: spin-ccw 8s linear infinite; transform-origin: center; }
-.ring3 { animation: spin-cw  3s linear infinite; transform-origin: center; }
-
-/* ── CMD LIST ── */
-.cmd-list { padding: 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
-.cmd-item { display: flex; align-items: flex-start; gap: 6px; font-size: .6rem; padding: 5px 7px; border-left: 2px solid transparent; transition: all .2s; border-radius: 1px; }
-.cmd-item:hover { border-left-color: var(--cyan); background: rgba(0,229,255,.05); }
-.cmd-item .kw { color: var(--gold); white-space: nowrap; min-width: 96px; }
-.cmd-item .desc { color: #4a9bb5; }
-
-/* ── LOG TERMINAL ── */
-.log-panel { display: flex; flex-direction: column; }
-.log-body { flex: 1; padding: 14px; overflow-y: auto; font-size: .7rem; line-height: 1.75; min-height: 300px; max-height: 380px; }
-.log-line { display: flex; gap: 10px; margin-bottom: 1px; }
-.log-line .ts { color: #1a4a5c; min-width: 50px; }
-.log-line .msg { color: #7dd3fc; white-space: pre-wrap; word-break: break-word; }
-.log-line.speak .msg { color: var(--cyan); }
-.log-line.input .msg { color: var(--gold); }
-.log-line.sys   .msg { color: #a78bfa; }
-.log-line.ok    .msg { color: var(--green); }
-.log-line.warn  .msg { color: var(--gold); }
-.log-line.error .msg { color: var(--red); }
-.log-line.heard .msg { color: #f0abfc; }
+/* ── TERMINAL VIEW (log) ── */
+#terminal-view{flex:1;padding:14px 16px;overflow-y:auto;font-size:.7rem;line-height:1.85;min-height:280px;display:none}
+.tl{display:flex;gap:10px;margin-bottom:1px}
+.tl-ts{color:rgba(0,212,255,.2);min-width:50px;font-family:var(--ff3)}
+.tl-msg{color:#7dd3fc;white-space:pre-wrap;word-break:break-word}
+.tl.speak .tl-msg{color:var(--c)}
+.tl.ok    .tl-msg{color:var(--grn)}
+.tl.warn  .tl-msg{color:var(--gold)}
+.tl.error .tl-msg{color:var(--red)}
+.tl.heard .tl-msg{color:#f0abfc}
+.tl.sys   .tl-msg{color:#a78bfa}
+.tl.input .tl-msg{color:var(--gold)}
 
 /* ── INPUT ROW ── */
-.input-row {
-  display: flex; gap: 8px; padding: 10px 14px;
-  border-top: 1px solid var(--dim); background: rgba(0,10,25,.6);
-}
-.prompt-sym { color: var(--cyan); font-size: 1rem; line-height: 36px; }
-#cmd-input {
-  flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--dim);
-  color: var(--cyan); font-family: var(--font-mono); font-size: .78rem;
-  padding: 6px 4px; outline: none; transition: border-color .2s;
-}
-#cmd-input:focus { border-bottom-color: var(--cyan); }
-#cmd-input::placeholder { color: var(--dim); }
-.mic-btn, .send-btn {
-  background: transparent; border: 1px solid var(--dim); color: var(--cyan);
-  font-family: var(--font-hud); font-size: .58rem; letter-spacing: .1em;
-  padding: 6px 12px; cursor: pointer; border-radius: 2px; transition: all .2s;
-}
-.mic-btn:hover, .send-btn:hover { background: rgba(0,229,255,.1); border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,229,255,.2); }
-.mic-btn.active { background: rgba(255,60,92,.15); border-color: var(--red); color: var(--red); box-shadow: 0 0 10px rgba(255,60,92,.35); }
-
-/* ── METRICS ── */
-.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
-.metric-card { background: var(--panel); border: 1px solid var(--dim); border-top: 2px solid var(--cyan); padding: 10px 14px; border-radius: 2px; }
-.m-lbl { font-size: .53rem; letter-spacing: .15em; color: var(--blue); margin-bottom: 4px; }
-.m-val { font-family: var(--font-hud); font-size: 1.25rem; color: var(--cyan); text-shadow: var(--glow); }
-.m-bar { height: 2px; background: var(--dim); margin-top: 6px; border-radius: 1px; overflow: hidden; }
-.m-bar-fill { height: 100%; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); border-radius: 1px; transition: width .6s ease; }
-
-footer { text-align: center; font-size: .56rem; letter-spacing: .16em; color: var(--dim); padding-top: 8px; border-top: 1px solid rgba(0,61,92,.35); }
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
-
-@media(max-width:700px){
-  .main-grid { grid-template-columns: 1fr; }
-  .metrics { grid-template-columns: repeat(2,1fr); }
-  #clock { font-size: 1.4rem; }
-}
+.t-input{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--bdr);background:rgba(0,8,20,.7);align-items:center}
+.t-prompt{color:var(--c);font-size:1rem;line-height:38px}
+#cmd-in{flex:1;background:transparent;border:none;border-bottom:1px solid var(--bdr);color:var(--c);font-family:var(--ff3);font-size:.78rem;padding:7px 4px;outline:none;transition:border-color .2s}
+#cmd-in:focus{border-bottom-color:var(--c)}
+#cmd-in::placeholder{color:rgba(0,212,255,.22)}
+.t-btn{background:transparent;border:1px solid var(--bdr);color:var(--c);font-family:var(--ff1);font-size:.55rem;letter-spacing:.1em;padding:8px 14px;cursor:pointer;border-radius:1px;transition:all .2s;white-space:nowrap}
+.t-btn:hover{background:rgba(0,212,255,.1);border-color:var(--c)}
+.t-btn.mic-on{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.1)}
+/* right panel */
+.right-panel{display:flex;flex-direction:column;gap:14px}
+.arc-card{background:var(--p);border:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;padding:26px 20px 20px;gap:10px;position:relative;overflow:hidden}
+.arc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent)}
+.arc-sm{position:relative;width:148px;height:148px}
+.arc-sm svg{width:100%;height:100%}
+.sm-r1{animation:cw 5s linear infinite;transform-origin:center}
+.sm-r2{animation:ccw 8s linear infinite;transform-origin:center}
+.sm-r3{animation:cw 3s linear infinite;transform-origin:center}
+#arc-lbl{font-family:var(--ff1);font-size:.65rem;letter-spacing:.22em;color:var(--c);text-shadow:var(--glow)}
+.status-card{background:var(--p);border:1px solid var(--bdr)}
+.sc-hdr{font-family:var(--ff1);font-size:.54rem;letter-spacing:.2em;color:var(--c2);padding:8px 14px;border-bottom:1px solid var(--bdr);background:rgba(0,212,255,.04)}
+.sc-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.sc-row{display:flex;align-items:center;justify-content:space-between;font-size:.6rem;padding:5px 0;border-bottom:1px solid rgba(0,212,255,.07)}
+.sc-row:last-child{border-bottom:none}
+.sc-lbl{color:var(--c2);letter-spacing:.1em}
+.sc-val{color:var(--c);font-family:var(--ff1);font-size:.58rem;letter-spacing:.08em}
+.sc-val.grn{color:var(--grn)}.sc-val.red{color:var(--red)}.sc-val.gold{color:var(--gold)}
+footer{text-align:center;font-size:.52rem;letter-spacing:.16em;color:rgba(0,212,255,.2);padding-top:8px;border-top:1px solid rgba(0,212,255,.1)}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+@media(max-width:800px){.content-grid{grid-template-columns:1fr}.right-panel{display:none}#clk{font-size:1.5rem}}
 </style>
 </head>
 <body>
 
-<canvas id="stars"></canvas>
+<!-- background layers -->
+<canvas id="cv-stars"></canvas>
+<canvas id="cv-grid"></canvas>
+<canvas id="cv-radar"></canvas>
 
-<!-- ═══════════════════════ AUTH OVERLAY ═══════════════════════ -->
-<div id="auth-overlay">
-  <div class="auth-box">
-    <div class="auth-logo">J<span style="color:#ff3c5c">.</span>A<span style="color:#ff3c5c">.</span>R<span style="color:#ff3c5c">.</span>V<span style="color:#ff3c5c">.</span>I<span style="color:#ff3c5c">.</span>S</div>
-    <div class="auth-sub">AUTHORIZATION REQUIRED — ENTER ACCESS CODE</div>
-    <input type="password" id="pw-input" placeholder="· · · · · · · ·" autocomplete="off"/>
-    <button onclick="doAuth()">AUTHENTICATE ▸</button>
-    <div id="auth-msg"></div>
+<!-- success flash -->
+<div id="success-flash"></div>
+
+<!-- ═══════════════════════════════════════════════
+     AUTH OVERLAY
+═══════════════════════════════════════════════ -->
+<div id="overlay">
+  <canvas id="cv-auth"></canvas>
+  <div class="scan-sweep"></div>
+
+  <div id="ov-card">
+
+    <!-- Logo -->
+    <div class="auth-logo-block">
+      <div class="auth-logo">
+        <span class="l">J</span><span class="l" style="color:var(--red)">.</span>
+        <span class="l">A</span><span class="l" style="color:var(--red)">.</span>
+        <span class="l">R</span><span class="l" style="color:var(--red)">.</span>
+        <span class="l">V</span><span class="l" style="color:var(--red)">.</span>
+        <span class="l">I</span><span class="l" style="color:var(--red)">.</span>
+        <span class="l">S</span>
+      </div>
+      <div class="auth-tagline">JUST A RATHER VERY INTELLIGENT SYSTEM &nbsp;·&nbsp; MARK VII</div>
+    </div>
+
+    <!-- Arc Reactor -->
+    <div class="auth-arc">
+      <svg viewBox="0 0 210 210" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="105" cy="105" r="101" fill="none" stroke="rgba(0,212,255,.06)" stroke-width="1"/>
+        <g class="r4"><circle cx="105" cy="105" r="95" fill="none" stroke="rgba(0,212,255,.07)" stroke-width=".8" stroke-dasharray="2 18"/></g>
+        <g class="r1"><circle cx="105" cy="105" r="88" fill="none" stroke="#00d4ff" stroke-width="1.4" stroke-dasharray="16 8" opacity=".8"/></g>
+        <g class="r2"><circle cx="105" cy="105" r="74" fill="none" stroke="#ffc940" stroke-width="1" stroke-dasharray="10 16" opacity=".55"/></g>
+        <g class="r3"><circle cx="105" cy="105" r="60" fill="none" stroke="#00d4ff" stroke-width=".7" stroke-dasharray="4 12" opacity=".4"/></g>
+        <g class="r1" style="animation-direction:reverse"><circle cx="105" cy="105" r="47" fill="none" stroke="rgba(0,255,136,.25)" stroke-width=".5" stroke-dasharray="6 8"/></g>
+        <polygon points="105,73 129,87 129,115 105,129 81,115 81,87" fill="rgba(0,212,255,.05)" stroke="#00d4ff" stroke-width="1.2"/>
+        <polygon points="105,83 121,92 121,118 105,127 89,118 89,92" fill="rgba(0,212,255,.08)" stroke="#00d4ff" stroke-width=".8"/>
+        <polygon points="105,93 115,99 115,111 105,117 95,111 95,99" fill="rgba(0,212,255,.12)" stroke="#00d4ff" stroke-width=".6"/>
+        <circle cx="105" cy="105" r="26" fill="rgba(0,212,255,.12)" stroke="#00d4ff" stroke-width="1.5"/>
+        <circle cx="105" cy="105" r="13" fill="rgba(0,212,255,.45)"/>
+        <circle cx="105" cy="105" r="5.5" fill="#00d4ff"/>
+        <circle cx="105" cy="105" r="32" fill="none" stroke="#00d4ff" stroke-width=".5" opacity=".35">
+          <animate attributeName="r" values="32;96;32" dur="3s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".5;0;.5" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="105" cy="105" r="32" fill="none" stroke="#00d4ff" stroke-width=".3" opacity=".2">
+          <animate attributeName="r" values="32;96;32" dur="3s" begin="1.5s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".3;0;.3" dur="3s" begin="1.5s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+      <div class="arc-core-pulse"></div>
+    </div>
+
+    <!-- Waveform -->
+    <div id="wave">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+    </div>
+
+    <!-- Status -->
+    <div id="ov-title">SYSTEM BOOT</div>
+    <div id="ov-sub">INITIALIZING SECURITY PROTOCOLS...</div>
+    <div id="boot-bar"><div id="boot-fill"></div></div>
+
+    <!-- Mic button (shown if browser needs click) -->
+    <button id="mic-request-btn" onclick="requestMic()">⏺ &nbsp;ENABLE VOICE RECOGNITION</button>
+
+    <!-- AUTH CARD -->
+    <div id="auth-card">
+      <div class="ac-top"></div>
+      <div class="ac-body">
+
+        <div class="ac-hdr">
+          <div class="ac-title">IDENTITY VERIFICATION REQUIRED</div>
+          <div class="ac-dots">
+            <div class="ac-dot"></div>
+            <div class="ac-dot"></div>
+            <div class="ac-dot"></div>
+          </div>
+        </div>
+
+        <div class="pw-wrap" id="pw-wrap">
+          <span class="pw-prefix">›</span>
+          <input type="password" id="auth-pw" placeholder="ENTER ACCESS CODE" autocomplete="off" maxlength="32"/>
+        </div>
+
+        <div class="pin-dots" id="pin-dots">
+          <div class="pin-dot"></div><div class="pin-dot"></div>
+          <div class="pin-dot"></div><div class="pin-dot"></div>
+          <div class="pin-dot"></div><div class="pin-dot"></div>
+          <div class="pin-dot"></div><div class="pin-dot"></div>
+        </div>
+
+        <button id="auth-btn" onclick="doAuth()">⬡ &nbsp;AUTHENTICATE &nbsp;▸</button>
+
+        <div id="auth-msg"></div>
+
+        <div class="attempt-row">
+          <span id="att-text">ATTEMPTS REMAINING</span>
+          <div id="att-bars">
+            <div class="att-bar"></div>
+            <div class="att-bar"></div>
+            <div class="att-bar"></div>
+          </div>
+        </div>
+
+        <div class="ac-divider">OR</div>
+        <button id="retry-mic-btn" onclick="retryMic()">🎤 &nbsp;RETRY VOICE AUTHENTICATION</button>
+      </div>
+    </div>
+
+    <!-- Wake hints -->
+    <div id="wake-hints">
+      <div class="w-hint"><strong>VOICE</strong>"Jarvis" or<br>"Hello Jarvis"</div>
+      <div class="w-hint"><strong>ALT+W</strong>Keyboard<br>wake toggle</div>
+      <div class="w-hint"><strong>ESC</strong>Return<br>to sleep</div>
+    </div>
+
   </div>
 </div>
 
-<!-- ═══════════════════════ MAIN UI ═══════════════════════════ -->
+<!-- ═══════════════════════════════════════════════
+     MAIN UI
+═══════════════════════════════════════════════ -->
 <div class="shell">
 
-  <!-- HEADER -->
-  <header>
+  <header class="hud-top">
     <div>
-      <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
-      <div class="tagline">JUST A RATHER VERY INTELLIGENT SYSTEM &nbsp;·&nbsp; v2.0</div>
+      <div class="logo">J<em>.</em>A<em>.</em>R<em>.</em>V<em>.</em>I<em>.</em>S</div>
+      <div class="logo-sub">JUST A RATHER VERY INTELLIGENT SYSTEM &nbsp;·&nbsp; MARK VII &nbsp;·&nbsp; STARK INDUSTRIES</div>
     </div>
-    <div class="sys-status">
-      <span id="wake-badge"><span class="dot-sm"></span><span id="wake-txt">STANDBY</span></span>
-      <div id="conn-dot" title="Server connection"></div>
-      <span id="conn-label" style="color:var(--dim)">DISCONNECTED</span>
+    <div class="hud-right">
+      <div class="pill" id="conn-pill">● CONNECTING</div>
+      <div class="pill" id="wake-pill">◌ STANDBY</div>
+      <div class="pill">⬡ CORE ONLINE</div>
     </div>
   </header>
 
-  <!-- CLOCK STRIP -->
-  <div class="clock-strip">
+  <div class="clock-band">
     <div>
-      <div id="clock">00:00:00</div>
-      <div id="date-str">—</div>
+      <div id="clk">00:00:00</div>
+      <div id="clk-date">—</div>
     </div>
-    <div class="status-pills">
-      <div class="pill">NEURAL LINK · ACTIVE</div>
-      <div class="pill">VOICE ENGINE · READY</div>
-      <div class="pill">THREAT LEVEL · NONE</div>
+    <div class="band-pills">
+      <div class="bp">NEURAL NET · ACTIVE</div>
+      <div class="bp">ENCRYPTION · AES-256</div>
+      <div class="bp" id="sess-pill">SESSION · 00:00</div>
     </div>
   </div>
 
-  <!-- MAIN GRID -->
-  <div class="main-grid">
+  <div class="content-grid">
 
-    <!-- LEFT COLUMN -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
+    <div class="panel-main">
 
-      <!-- Arc Reactor -->
-      <div class="panel">
-        <div class="panel-hdr">⬡ &nbsp;POWER CORE</div>
-        <div class="arc-wrap">
-          <div class="arc">
-            <svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="70" cy="70" r="65" fill="none" stroke="#003d5c" stroke-width="1"/>
-              <g class="ring1"><circle cx="70" cy="70" r="58" fill="none" stroke="#00e5ff" stroke-width="1.4" stroke-dasharray="12 6" opacity=".7"/></g>
-              <g class="ring2"><circle cx="70" cy="70" r="48" fill="none" stroke="#0078d4" stroke-width="1"   stroke-dasharray="20 8" opacity=".6"/></g>
-              <g class="ring3"><circle cx="70" cy="70" r="38" fill="none" stroke="#00e5ff" stroke-width=".8"  stroke-dasharray="4 10" opacity=".5"/></g>
-              <polygon points="70,42 90,54 90,78 70,90 50,78 50,54" fill="rgba(0,229,255,.04)" stroke="#00e5ff" stroke-width="1.2"/>
-              <polygon points="70,52 82,59 82,73 70,80 58,73 58,59" fill="rgba(0,229,255,.07)" stroke="#00e5ff" stroke-width=".8"/>
-              <circle cx="70" cy="70" r="16" fill="rgba(0,229,255,.15)" stroke="#00e5ff" stroke-width="1.5"/>
-              <circle cx="70" cy="70" r="8"  fill="rgba(0,229,255,.5)"/>
-              <circle cx="70" cy="70" r="4"  fill="#00e5ff"/>
-              <circle cx="70" cy="70" r="20" fill="none" stroke="#00e5ff" stroke-width=".5" opacity=".4">
-                <animate attributeName="r"       from="20" to="65" dur="2.5s" repeatCount="indefinite"/>
-                <animate attributeName="opacity" from=".5" to="0"  dur="2.5s" repeatCount="indefinite"/>
-              </circle>
-            </svg>
-            <div class="arc-center">MARK<br/>VII</div>
-          </div>
-          <div class="arc-status-lbl" id="arc-status">STANDBY</div>
+      <!-- HEADER with mode tabs -->
+      <div class="p-hdr">
+        <span>◈ &nbsp;J.A.R.V.I.S INTERFACE</span>
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="tab-chat" onclick="switchMode('chat')">💬 CHAT</button>
+          <button class="mode-tab" id="tab-terminal" onclick="switchMode('terminal')">▸ TERMINAL</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="mic-lbl" style="font-size:.5rem;color:var(--c2);letter-spacing:.1em">MIC: --</span>
+          <div class="pdot"></div>
         </div>
       </div>
 
-      <!-- Command reference -->
-      <div class="panel" style="flex:1">
-        <div class="panel-hdr">◈ &nbsp;VOICE COMMANDS</div>
-        <div class="cmd-list">
-          <div class="cmd-item"><span class="kw">"wake up"</span><span class="desc">Activate Jarvis</span></div>
-          <div class="cmd-item"><span class="kw">"go to sleep"</span><span class="desc">Suspend session</span></div>
-          <div class="cmd-item"><span class="kw">"the time"</span><span class="desc">Current time</span></div>
-          <div class="cmd-item"><span class="kw">"the date"</span><span class="desc">Today's date</span></div>
-          <div class="cmd-item"><span class="kw">"internet speed"</span><span class="desc">Run speedtest</span></div>
-          <div class="cmd-item"><span class="kw">"open ..."</span><span class="desc">Launch application</span></div>
-          <div class="cmd-item"><span class="kw">"google ..."</span><span class="desc">Google search</span></div>
-          <div class="cmd-item"><span class="kw">"youtube ..."</span><span class="desc">YouTube search</span></div>
-          <div class="cmd-item"><span class="kw">"wikipedia ..."</span><span class="desc">Wikipedia lookup</span></div>
-          <div class="cmd-item"><span class="kw">"weather"</span><span class="desc">Maharashtra temp</span></div>
-          <div class="cmd-item"><span class="kw">"ipl score"</span><span class="desc">Live cricket score</span></div>
-          <div class="cmd-item"><span class="kw">"screenshot"</span><span class="desc">Capture screen</span></div>
-          <div class="cmd-item"><span class="kw">"add task ..."</span><span class="desc">Add a task</span></div>
-          <div class="cmd-item"><span class="kw">"my schedule"</span><span class="desc">View tasks</span></div>
-          <div class="cmd-item"><span class="kw">"remember that..."</span><span class="desc">Store memory</span></div>
-          <div class="cmd-item"><span class="kw">"what do you remember"</span><span class="desc">Read memory</span></div>
-          <div class="cmd-item"><span class="kw">"calculate ..."</span><span class="desc">WolframAlpha</span></div>
-          <div class="cmd-item"><span class="kw">"tired"</span><span class="desc">Play music</span></div>
-          <div class="cmd-item"><span class="kw">"news"</span><span class="desc">Latest headlines</span></div>
-          <div class="cmd-item"><span class="kw">"volume up/down"</span><span class="desc">Volume control</span></div>
-          <div class="cmd-item"><span class="kw">"focus mode"</span><span class="desc">Deep work mode</span></div>
-          <div class="cmd-item"><span class="kw">"shutdown system"</span><span class="desc">PC shutdown</span></div>
-          <div class="cmd-item"><span class="kw">"finally sleep"</span><span class="desc">Kill Jarvis</span></div>
+      <!-- BIG MIC TOGGLE -->
+      <div id="mic-toggle-wrap">
+        <button id="mic-big-btn" onclick="toggleMic()">
+          <span class="mic-icon">🎤</span>
+          <span id="mic-btn-txt">ENABLE MICROPHONE</span>
+        </button>
+        <div id="mic-wave">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <span id="mic-status-txt">MICROPHONE OFF</span>
+      </div>
+
+      <!-- CHAT VIEW -->
+      <div id="chat-view">
+        <div id="typing-ind">
+          <div class="t-dots"><span></span><span></span><span></span></div>
+          <span class="t-lbl">JARVIS IS PROCESSING...</span>
+        </div>
+      </div>
+
+      <!-- TERMINAL VIEW (log) -->
+      <div id="terminal-view" id="t-body"></div>
+
+      <!-- INPUT -->
+      <div class="t-input">
+        <span class="t-prompt">›</span>
+        <input id="cmd-in" type="text" placeholder='Type a command or question...' autocomplete="off" spellcheck="false"/>
+        <button class="t-btn" onclick="sendCmd()">SEND ▸</button>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="arc-card">
+        <div class="arc-sm">
+          <svg viewBox="0 0 148 148" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="74" cy="74" r="70" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="1"/>
+            <g class="sm-r1"><circle cx="74" cy="74" r="65" fill="none" stroke="#00d4ff" stroke-width="1.3" stroke-dasharray="12 6" opacity=".75"/></g>
+            <g class="sm-r2"><circle cx="74" cy="74" r="53" fill="none" stroke="#ffc940" stroke-width=".9" stroke-dasharray="7 12" opacity=".55"/></g>
+            <g class="sm-r3"><circle cx="74" cy="74" r="41" fill="none" stroke="#00d4ff" stroke-width=".6" stroke-dasharray="3 9" opacity=".4"/></g>
+            <polygon points="74,47 93,58 93,80 74,91 55,80 55,58" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1"/>
+            <circle cx="74" cy="74" r="18" fill="rgba(0,212,255,.14)" stroke="#00d4ff" stroke-width="1.3"/>
+            <circle cx="74" cy="74" r="9" fill="rgba(0,212,255,.5)"/>
+            <circle cx="74" cy="74" r="4" fill="#00d4ff"/>
+            <circle cx="74" cy="74" r="22" fill="none" stroke="#00d4ff" stroke-width=".4" opacity=".35">
+              <animate attributeName="r" values="22;67;22" dur="2.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values=".4;0;.4" dur="2.8s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
+        <div id="arc-lbl">STANDBY</div>
+      </div>
+
+      <div class="status-card">
+        <div class="sc-hdr">◈ &nbsp;SYSTEM STATUS</div>
+        <div class="sc-body">
+          <div class="sc-row"><span class="sc-lbl">SERVER</span>    <span class="sc-val" id="st-srv">CONNECTING</span></div>
+          <div class="sc-row"><span class="sc-lbl">JARVIS</span>    <span class="sc-val" id="st-jrv">STANDBY</span></div>
+          <div class="sc-row"><span class="sc-lbl">MICROPHONE</span><span class="sc-val" id="st-mic">--</span></div>
+          <div class="sc-row"><span class="sc-lbl">WAKE WORD</span> <span class="sc-val" id="st-wk">INACTIVE</span></div>
+          <div class="sc-row"><span class="sc-lbl">AUTH</span>      <span class="sc-val" id="st-auth">PENDING</span></div>
+          <div class="sc-row"><span class="sc-lbl">SESSION</span>   <span class="sc-val" id="st-sess">00:00</span></div>
         </div>
       </div>
     </div>
-
-    <!-- RIGHT: TERMINAL -->
-    <div class="panel log-panel">
-      <div class="panel-hdr">▸ &nbsp;SYSTEM TERMINAL &nbsp;<span style="color:var(--dim)">// LIVE OUTPUT FROM jarvismain.py</span></div>
-      <div class="log-body" id="log-body"></div>
-      <div class="input-row">
-        <span class="prompt-sym">›</span>
-        <input id="cmd-input" type="text" placeholder='Type command or press MIC... (e.g. "wake up")' autocomplete="off" spellcheck="false"/>
-        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">⏺ MIC</button>
-        <button class="send-btn" onclick="sendCmd()">SEND ▸</button>
-      </div>
-    </div>
-
   </div>
 
-  <!-- METRICS -->
-  <div class="metrics">
-    <div class="metric-card">
-      <div class="m-lbl">POWER OUTPUT</div>
-      <div class="m-val">3.2 GW</div>
-      <div class="m-bar"><div class="m-bar-fill" style="width:78%"></div></div>
-    </div>
-    <div class="metric-card">
-      <div class="m-lbl">NEURAL LOAD</div>
-      <div class="m-val" id="m-cpu">--</div>
-      <div class="m-bar"><div class="m-bar-fill" id="cpu-bar" style="width:0%"></div></div>
-    </div>
-    <div class="metric-card">
-      <div class="m-lbl">MEMORY CORE</div>
-      <div class="m-val">6.1 TB</div>
-      <div class="m-bar"><div class="m-bar-fill" style="width:61%"></div></div>
-    </div>
-    <div class="metric-card">
-      <div class="m-lbl">SESSION TIME</div>
-      <div class="m-val" id="m-uptime">00:00</div>
-      <div class="m-bar"><div class="m-bar-fill" style="width:100%"></div></div>
-    </div>
-  </div>
-
-  <footer>J.A.R.V.I.S INTERFACE &nbsp;·&nbsp; MARK VII &nbsp;·&nbsp; LINKED TO jarvismain.py &nbsp;·&nbsp; STARK INDUSTRIES</footer>
+  <footer>J.A.R.V.I.S &nbsp;·&nbsp; MARK VII &nbsp;·&nbsp; ALL SYSTEMS NOMINAL &nbsp;·&nbsp; STARK INDUSTRIES</footer>
 </div>
 
 <script>
-// ── Stars ─────────────────────────────────────────────────────
-(function(){
-  const c = document.getElementById('stars'), ctx = c.getContext('2d');
-  let stars = [];
-  function resize(){ c.width=innerWidth; c.height=innerHeight; }
-  resize(); window.addEventListener('resize', resize);
-  for(let i=0;i<180;i++) stars.push({x:Math.random()*3000, y:Math.random()*2000, r:Math.random()*1.2+.2, a:Math.random()});
-  function draw(){
-    ctx.clearRect(0,0,c.width,c.height);
-    stars.forEach(s=>{
-      s.a += .004*(Math.random()-.5);
-      s.a = Math.max(.05, Math.min(1, s.a));
-      ctx.beginPath();
-      ctx.arc(s.x%c.width, s.y%c.height, s.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(0,229,255,${s.a})`;
-      ctx.fill();
-    });
-    requestAnimationFrame(draw);
-  }
-  draw();
+// ═══════════════════════════════════════
+//  CANVAS: Stars
+// ═══════════════════════════════════════
+(()=>{
+  const c=document.getElementById('cv-stars'),x=c.getContext('2d');
+  const r=()=>{c.width=innerWidth;c.height=innerHeight};r();window.addEventListener('resize',r);
+  const s=Array.from({length:220},()=>({x:Math.random()*3000,y:Math.random()*2000,r:Math.random()*1.2+.2,a:Math.random(),d:.003*(Math.random()-.5)}));
+  (function draw(){x.clearRect(0,0,c.width,c.height);s.forEach(p=>{p.a=Math.max(.04,Math.min(1,p.a+p.d));x.beginPath();x.arc(p.x%c.width,p.y%c.height,p.r,0,Math.PI*2);x.fillStyle=`rgba(0,212,255,${p.a*.5})`;x.fill()});requestAnimationFrame(draw)})();
 })();
 
-// ── Clock ─────────────────────────────────────────────────────
-function updateClock(){
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  document.getElementById('clock').textContent =
-    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  const days=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
-  const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  document.getElementById('date-str').textContent =
-    `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
-}
-setInterval(updateClock,1000); updateClock();
+// ═══════════════════════════════════════
+//  CANVAS: Grid
+// ═══════════════════════════════════════
+(()=>{
+  const c=document.getElementById('cv-grid'),x=c.getContext('2d');
+  const r=()=>{c.width=innerWidth;c.height=innerHeight};r();window.addEventListener('resize',r);
+  let o=0;
+  (function draw(){
+    x.clearRect(0,0,c.width,c.height);
+    const W=c.width,H=c.height,vx=W/2,vy=H*.55;
+    o=(o+.3)%60;x.strokeStyle='rgba(0,180,255,.06)';x.lineWidth=1;
+    for(let i=0;i<20;i++){const y=vy+(i*60+o)*(H/(H-vy+1));if(y>H)break;x.beginPath();x.moveTo(0,y);x.lineTo(W,y);x.stroke()}
+    for(let i=-14;i<=14;i++){x.beginPath();x.moveTo(vx+i*(W/14),H);x.lineTo(vx,vy);x.stroke()}
+    requestAnimationFrame(draw);
+  })();
+})();
 
-// ── Session uptime ─────────────────────────────────────────────
-const startTime = Date.now();
+// ═══════════════════════════════════════
+//  CANVAS: Radar
+// ═══════════════════════════════════════
+(()=>{
+  const c=document.getElementById('cv-radar'),x=c.getContext('2d');
+  const r=()=>{c.width=innerWidth;c.height=innerHeight};r();window.addEventListener('resize',r);
+  let a=0;const cx=100,cy=100;
+  (function draw(){
+    x.clearRect(0,0,c.width,c.height);
+    [80,56,32].forEach(rad=>{x.beginPath();x.arc(cx,cy,rad,0,Math.PI*2);x.strokeStyle='rgba(0,212,255,.12)';x.lineWidth=1;x.stroke()});
+    x.strokeStyle='rgba(0,212,255,.07)';
+    x.beginPath();x.moveTo(cx-86,cy);x.lineTo(cx+86,cy);x.stroke();
+    x.beginPath();x.moveTo(cx,cy-86);x.lineTo(cx,cy+86);x.stroke();
+    x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,78,a,a+Math.PI*.6);x.closePath();
+    const g=x.createRadialGradient(cx,cy,0,cx,cy,78);
+    g.addColorStop(0,'rgba(0,212,255,0)');g.addColorStop(1,'rgba(0,212,255,.12)');
+    x.fillStyle=g;x.fill();
+    x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(a)*78,cy+Math.sin(a)*78);
+    x.strokeStyle='rgba(0,212,255,.6)';x.lineWidth=1.5;x.stroke();
+    const bx=cx+Math.cos(a+.2)*44,by=cy+Math.sin(a+.2)*44;
+    x.beginPath();x.arc(bx,by,3,0,Math.PI*2);x.fillStyle='rgba(0,255,136,.75)';x.fill();
+    a+=.015;requestAnimationFrame(draw);
+  })();
+})();
+
+// ═══════════════════════════════════════
+//  AUTH PARTICLE NETWORK
+// ═══════════════════════════════════════
+(()=>{
+  const c=document.getElementById('cv-auth'),x=c.getContext('2d');
+  const r=()=>{c.width=innerWidth;c.height=innerHeight};r();window.addEventListener('resize',r);
+  const pts=Array.from({length:55},()=>({
+    x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+    vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,
+    r:Math.random()*1.4+.4,a:Math.random()*.35+.05
+  }));
+  (function draw(){
+    x.clearRect(0,0,c.width,c.height);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=c.width;if(p.x>c.width)p.x=0;
+      if(p.y<0)p.y=c.height;if(p.y>c.height)p.y=0;
+      x.beginPath();x.arc(p.x,p.y,p.r,0,Math.PI*2);
+      x.fillStyle=`rgba(0,212,255,${p.a})`;x.fill();
+    });
+    pts.forEach((p,i)=>{
+      pts.slice(i+1).forEach(q=>{
+        const d=Math.hypot(p.x-q.x,p.y-q.y);
+        if(d<110){
+          x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);
+          x.strokeStyle=`rgba(0,212,255,${.07*(1-d/110)})`;x.lineWidth=.5;x.stroke();
+        }
+      });
+    });
+    requestAnimationFrame(draw);
+  })();
+})();
+
+// ═══════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════
+const DAYS=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+const MONS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 setInterval(()=>{
-  const s = Math.floor((Date.now()-startTime)/1000);
-  document.getElementById('m-uptime').textContent =
-    `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  document.getElementById('clk').textContent=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  document.getElementById('clk-date').textContent=`${DAYS[n.getDay()]} · ${n.getDate()} ${MONS[n.getMonth()]} ${n.getFullYear()}`;
+},1000);
+const _st=Date.now();
+setInterval(()=>{
+  const s=Math.floor((Date.now()-_st)/1000);
+  const t=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  document.getElementById('sess-pill').textContent='SESSION · '+t;
+  document.getElementById('st-sess').textContent=t;
 },1000);
 
-// ── Neural load flicker ────────────────────────────────────────
-setInterval(()=>{
-  const v = Math.floor(Math.random()*35+10);
-  document.getElementById('m-cpu').textContent = v+'%';
-  document.getElementById('cpu-bar').style.width = v+'%';
-},3000);
-
-// ══════════════════════════════════════════════════════════════
-//  SOCKET.IO — connects to jarvismain.py Flask server
-// ══════════════════════════════════════════════════════════════
-const socket = io();   // connects to same host (localhost:5000)
-
-socket.on('connect', () => {
-  document.getElementById('conn-dot').classList.add('connected');
-  document.getElementById('conn-label').textContent = 'CONNECTED';
-  document.getElementById('conn-label').style.color = 'var(--green)';
-  addLog('Connected to Jarvis backend server.', 'ok');
+// ═══════════════════════════════════════
+//  SOCKET.IO
+// ═══════════════════════════════════════
+const socket=io();
+socket.on('connect',()=>{
+  document.getElementById('conn-pill').textContent='● CONNECTED';
+  document.getElementById('conn-pill').style.color='var(--grn)';
+  setStatus('st-srv','ONLINE','grn');
+  log('Backend server connected.','ok');
 });
-
-socket.on('disconnect', () => {
-  document.getElementById('conn-dot').classList.remove('connected');
-  document.getElementById('conn-label').textContent = 'DISCONNECTED';
-  document.getElementById('conn-label').style.color = 'var(--red)';
-  addLog('Lost connection to backend server.', 'error');
+socket.on('disconnect',()=>{
+  document.getElementById('conn-pill').textContent='● OFFLINE';
+  document.getElementById('conn-pill').style.color='var(--red)';
+  setStatus('st-srv','OFFLINE','red');
+  log('Connection lost.','error');
 });
+socket.on('log', d=>log(d.msg, d.type||''));
+socket.on('state',d=>setAwake(d.awake));
 
-// Receive log messages from jarvismain.py
-socket.on('log', (data) => {
-  addLog(data.msg, data.type || '');
-});
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let isAwake=false, wakeListening=false, micActive=false;
+let wakeRecog=null, cmdRecog=null;
+let micGranted=false, authenticated=false;
+let authAttempts=0;
+const MAX_ATTEMPTS=3;
 
-// Receive state changes (awake/sleep)
-socket.on('state', (data) => {
-  setAwake(data.awake);
-  if(data.shutdown){
-    setTimeout(()=> addLog('Server shut down.','error'), 1000);
-  }
-});
+const WAKE_WORDS =['jarvis','hey jarvis','hello jarvis','wake up jarvis','wake up','yo jarvis','ok jarvis','hi jarvis'];
+const SLEEP_WORDS=['go to sleep','sleep jarvis','goodbye jarvis','bye jarvis','jarvis sleep'];
 
-// ── LOG TERMINAL ───────────────────────────────────────────────
-const logBody = document.getElementById('log-body');
-function addLog(msg, type=''){
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const ts = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  const line = document.createElement('div');
-  line.className = 'log-line ' + type;
-  line.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
-  logBody.appendChild(line);
-  logBody.scrollTop = logBody.scrollHeight;
-}
+const overlay=document.getElementById('overlay');
+const ovTitle=document.getElementById('ov-title');
+const ovSub=document.getElementById('ov-sub');
+const wave=document.getElementById('wave');
+const bootBar=document.getElementById('boot-bar');
+const bootFill=document.getElementById('boot-fill');
 
-// Boot log
-addLog('Initializing J.A.R.V.I.S interface...', 'sys');
-addLog('Connecting to backend server at localhost:5000...', '');
+// ═══════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════
+// ── Current mode ──
+let currentMode = 'chat'; // 'chat' or 'terminal'
 
-// ── WAKE STATE ─────────────────────────────────────────────────
-function setAwake(val){
-  const badge = document.getElementById('wake-badge');
-  const txt   = document.getElementById('wake-txt');
-  const arc   = document.getElementById('arc-status');
-  if(val){
-    badge.classList.add('awake');
-    txt.textContent = 'ACTIVE';
-    arc.textContent = 'ONLINE';
-    arc.style.color = 'var(--green)';
-    arc.style.textShadow = '0 0 10px rgba(74,222,128,.5)';
+function switchMode(mode){
+  currentMode = mode;
+  const chatView = document.getElementById('chat-view');
+  const termView = document.getElementById('terminal-view');
+  const tabChat  = document.getElementById('tab-chat');
+  const tabTerm  = document.getElementById('tab-terminal');
+  if(mode === 'chat'){
+    chatView.style.display = 'flex';
+    termView.style.display = 'none';
+    tabChat.classList.add('active');
+    tabTerm.classList.remove('active');
   } else {
-    badge.classList.remove('awake');
-    txt.textContent = 'STANDBY';
-    arc.textContent = 'STANDBY';
-    arc.style.color = '';
-    arc.style.textShadow = '';
+    chatView.style.display = 'none';
+    termView.style.display = 'block';
+    tabChat.classList.remove('active');
+    tabTerm.classList.add('active');
   }
 }
 
-// ── AUTH ───────────────────────────────────────────────────────
+function log(msg, type=''){
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  const ts=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  // Always write to terminal view
+  const tv = document.getElementById('terminal-view');
+  const d = document.createElement('div'); d.className='tl '+type;
+  d.innerHTML=`<span class="tl-ts">${ts}</span><span class="tl-msg">${msg}</span>`;
+  tv.appendChild(d); tv.scrollTop = tv.scrollHeight;
+  // In chat mode — also add Jarvis bubble for speak/response messages
+  if(type === 'speak' || type === 'ok' || type === 'sys'){
+    addJarvisBubble(msg, ts);
+  }
+}
+
+function addUserBubble(text){
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  const ts=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const cv = document.getElementById('chat-view');
+  const ind = document.getElementById('typing-ind');
+  const b = document.createElement('div');
+  b.className = 'chat-bubble user';
+  b.innerHTML = `<div class="bubble-name">YOU</div>
+    <div class="bubble-msg">${text}</div>
+    <div class="bubble-time">${ts}</div>`;
+  cv.insertBefore(b, ind);
+  cv.scrollTop = cv.scrollHeight;
+  // Show typing indicator
+  ind.classList.add('show');
+  cv.scrollTop = cv.scrollHeight;
+}
+
+function addJarvisBubble(text, ts){
+  const cv = document.getElementById('chat-view');
+  const ind = document.getElementById('typing-ind');
+  ind.classList.remove('show');
+  const b = document.createElement('div');
+  b.className = 'chat-bubble jarvis';
+  b.innerHTML = `<div class="bubble-name">J.A.R.V.I.S</div>
+    <div class="bubble-msg">${text}</div>
+    <div class="bubble-time">${ts || ''}</div>`;
+  cv.insertBefore(b, ind);
+  cv.scrollTop = cv.scrollHeight;
+}
+function setStatus(id,text,cls=''){
+  const el=document.getElementById(id);if(!el)return;
+  el.textContent=text;el.className='sc-val '+(cls||'');
+}
+function setOvTitle(t){ovTitle.textContent=t}
+function setOvSub(t){ovSub.textContent=t}
+
+// ═══════════════════════════════════════
+//  BOOT SEQUENCE
+// ═══════════════════════════════════════
+function boot(){
+  bootBar.style.display='block';
+  const steps=[
+    [0,   'SYSTEM BOOT',       'LOADING NEURAL MODULES...',            8],
+    [500, 'SYSTEM BOOT',       'VOICE ENGINE INITIALIZING...',         22],
+    [1000,'SECURITY PROTOCOL', 'SCANNING ENVIRONMENT...',              40],
+    [1500,'SECURITY PROTOCOL', 'CHECKING MICROPHONE ACCESS...',        62],
+    [2000,'IDENTITY CHECK',    'REQUESTING VOICE AUTHENTICATION...',   80],
+  ];
+  steps.forEach(([delay,title,sub,pct])=>{
+    setTimeout(()=>{ setOvTitle(title);setOvSub(sub);bootFill.style.width=pct+'%'; },delay);
+  });
+  setTimeout(()=>{ bootFill.style.width='95%'; autoRequestMic(); }, 2200);
+}
+
+// ═══════════════════════════════════════
+//  PIN DOTS
+// ═══════════════════════════════════════
+function updatePinDots(val){
+  const dots=document.querySelectorAll('.pin-dot');
+  dots.forEach((d,i)=>{
+    d.classList.remove('filled','dot-err','dot-ok');
+    if(i<val.length) d.classList.add('filled');
+  });
+}
+document.getElementById('auth-pw').addEventListener('input',e=>updatePinDots(e.target.value));
+
+function flashPinError(){
+  const dots=document.querySelectorAll('.pin-dot');
+  dots.forEach(d=>{ d.classList.remove('filled'); d.classList.add('dot-err'); });
+  document.getElementById('pw-wrap').classList.add('pw-error');
+  const msg=document.getElementById('auth-msg');
+  msg.classList.remove('shake');void msg.offsetWidth;msg.classList.add('shake');
+  setTimeout(()=>{
+    dots.forEach(d=>d.classList.remove('dot-err'));
+    document.getElementById('pw-wrap').classList.remove('pw-error');
+  },800);
+}
+
+function updateAttBars(){
+  document.querySelectorAll('.att-bar').forEach((b,i)=>b.classList.toggle('used',i<authAttempts));
+  const rem=MAX_ATTEMPTS-authAttempts;
+  document.getElementById('att-text').textContent=rem>0?`ATTEMPTS REMAINING: ${rem}`:'ACCESS LOCKED';
+}
+
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
 async function doAuth(){
-  const pw  = document.getElementById('pw-input').value;
-  const msg = document.getElementById('auth-msg');
-  msg.textContent = 'Authenticating...';
-  msg.style.color = 'var(--blue)';
-  try {
-    const res  = await fetch('/api/auth', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({password: pw})
-    });
-    const data = await res.json();
+  const pw=document.getElementById('auth-pw').value.trim();
+  const msg=document.getElementById('auth-msg');
+  const btn=document.getElementById('auth-btn');
+  if(!pw){ msg.textContent='ENTER ACCESS CODE'; flashPinError(); return; }
+  if(authAttempts>=MAX_ATTEMPTS){ msg.textContent='SYSTEM LOCKED'; return; }
+  btn.classList.add('loading');btn.textContent='VERIFYING...';msg.textContent='';
+  await new Promise(r=>setTimeout(r,700));
+  try{
+    const res=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const data=await res.json();
     if(data.success){
-      document.getElementById('auth-overlay').style.display='none';
-      addLog(data.message, 'ok');
+      authenticated=true;
+      // flash green
+      const fl=document.getElementById('success-flash');fl.classList.add('flash');setTimeout(()=>fl.classList.remove('flash'),400);
+      document.querySelectorAll('.pin-dot').forEach(d=>{ d.classList.remove('filled');d.classList.add('dot-ok'); });
+      document.getElementById('pw-wrap').classList.add('pw-ok');
+      btn.textContent='✓ ACCESS GRANTED';btn.style.color='var(--grn)';btn.style.borderColor='var(--grn)';
+      setOvTitle('ACCESS GRANTED');setOvSub('IDENTITY VERIFIED — INITIALIZING SYSTEMS');
+      log(data.message,'ok');setStatus('st-auth','VERIFIED','grn');
+      setTimeout(()=>{
+        document.getElementById('auth-card').classList.remove('show');
+        setOvTitle('ARMED');setOvSub('CLICK ANYWHERE OR PRESS ALT+W TO WAKE');
+        overlay.style.cursor='pointer';overlay.classList.add('sleeping');
+        wave.classList.add('slow');
+        document.getElementById('wake-hints').classList.add('show');
+        overlay.addEventListener('click',onOverlayClick);
+      },1300);
     } else {
-      msg.textContent = data.message;
-      msg.style.color = 'var(--red)';
-      document.getElementById('pw-input').value = '';
+      authAttempts++;updateAttBars();flashPinError();
+      msg.textContent=authAttempts>=MAX_ATTEMPTS?'⚠ ACCESS DENIED — SYSTEM LOCKED':data.message.toUpperCase();
+      msg.style.color='var(--red)';
+      document.getElementById('auth-pw').value='';updatePinDots('');
+      btn.classList.remove('loading');btn.textContent='⬡ AUTHENTICATE ▸';btn.style.color='';btn.style.borderColor='';
     }
   } catch(e){
-    msg.textContent = 'Cannot reach server. Is jarvismain.py running?';
-    msg.style.color = 'var(--red)';
+    msg.textContent='SERVER OFFLINE — IS jarvismain.py RUNNING?';msg.style.color='var(--red)';
+    btn.classList.remove('loading');btn.textContent='⬡ AUTHENTICATE ▸';
   }
 }
-document.getElementById('pw-input').addEventListener('keydown', e => {
-  if(e.key === 'Enter') doAuth();
-});
+document.getElementById('auth-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doAuth(); });
 
-// ── SEND COMMAND ───────────────────────────────────────────────
-function sendCmd(){
-  const input = document.getElementById('cmd-input');
-  const val   = input.value.trim();
-  if(!val) return;
-  socket.emit('command', {query: val});
-  input.value = '';
+// ═══════════════════════════════════════
+//  MIC PERMISSION
+// ═══════════════════════════════════════
+function autoRequestMic(){
+  if(!navigator.mediaDevices||(!window.SpeechRecognition&&!window.webkitSpeechRecognition)){
+    micDenied('Speech recognition not supported — use Chrome.');return;
+  }
+  setOvSub('REQUESTING MICROPHONE ACCESS...');
+  navigator.mediaDevices.getUserMedia({audio:true})
+    .then(stream=>{
+      stream.getTracks().forEach(t=>t.stop());
+      micGranted=true;bootFill.style.width='100%';
+      setTimeout(()=>{ bootBar.style.display='none'; micReady(); },400);
+    })
+    .catch(err=>{
+      if(err.name==='NotAllowedError'||err.name==='PermissionDeniedError'){
+        micDenied('Microphone denied.');
+      } else {
+        setOvTitle('VOICE AUTH');setOvSub('CLICK BUTTON TO ENABLE MICROPHONE');
+        bootBar.style.display='none';
+        document.getElementById('mic-request-btn').classList.add('show');
+      }
+    });
 }
-document.getElementById('cmd-input').addEventListener('keydown', e => {
-  if(e.key === 'Enter') sendCmd();
-});
 
-// ── MIC BUTTON (uses Python backend speech recognition) ────────
-let micActive = false;
-function toggleMic(){
-  const btn = document.getElementById('mic-btn');
-  if(!micActive){
-    micActive = true;
-    btn.classList.add('active');
-    btn.textContent = '◼ STOP';
-    socket.emit('mic_control', {action: 'start'});
+function requestMic(){
+  document.getElementById('mic-request-btn').classList.remove('show');
+  setOvSub('REQUESTING MICROPHONE ACCESS...');
+  navigator.mediaDevices.getUserMedia({audio:true})
+    .then(stream=>{ stream.getTracks().forEach(t=>t.stop()); micGranted=true; micReady(); })
+    .catch(()=>micDenied('Microphone access denied.'));
+}
+
+function retryMic(){
+  document.getElementById('auth-card').classList.remove('show');
+  setOvTitle('VOICE AUTH');setOvSub('RETRYING MICROPHONE...');requestMic();
+}
+
+function micReady(){
+  setStatus('st-mic','ONLINE','grn');setStatus('st-auth','VOICE','grn');
+  authenticated=true;
+  document.getElementById('mic-lbl').textContent='MIC: WAKE WORD';
+  document.getElementById('mic-status-txt').textContent='WAKE WORD LISTENING';
+  setOvTitle('VOICE ARMED');setOvSub('SAY  "JARVIS"  OR  "HELLO JARVIS"  TO WAKE');
+  document.getElementById('wake-hints').classList.add('show');
+  wave.classList.add('slow');overlay.classList.add('sleeping');
+  setStatus('st-wk','LISTENING','gold');
+  log('Microphone online. Say "Jarvis" to begin.','ok');
+  startWakeListener();
+}
+
+function micDenied(reason){
+  setStatus('st-mic','DENIED','red');
+  setOvTitle('J.A.R.V.I.S');setOvSub('VOICE UNAVAILABLE — USE PASSWORD TO AUTHENTICATE');
+  bootBar.style.display='none';
+  document.getElementById('auth-card').classList.add('show');
+  log('Mic denied: '+reason,'warn');
+}
+
+function onOverlayClick(){
+  overlay.removeEventListener('click',onOverlayClick);
+  overlay.style.cursor='';
+  activateJarvis();
+}
+
+// ═══════════════════════════════════════
+//  WAKE / SLEEP
+// ═══════════════════════════════════════
+function activateJarvis(){
+  isAwake=true;wakeListening=false;wakeRecog&&wakeRecog.stop();
+  overlay.classList.remove('sleeping');overlay.classList.add('waking');
+  setOvTitle('ONLINE');setOvSub('GOOD TO SEE YOU, SIR.');
+  wave.classList.remove('slow');setAwake(true);
+  socket.emit('command',{query:'wake up'});
+  log('Jarvis activated.','ok');
+  setTimeout(()=>{ overlay.classList.add('out');setTimeout(()=>{ overlay.style.display='none'; },700); },1100);
+  setTimeout(startCommandListener,1300);
+}
+
+function sleepJarvis(){
+  isAwake=false;cmdRecog&&cmdRecog.stop();setAwake(false);
+  socket.emit('command',{query:'go to sleep'});
+  log('Jarvis sleeping. Say "Jarvis" to wake.','warn');
+  overlay.style.display='flex';
+  overlay.classList.remove('out','waking');overlay.classList.add('sleeping');
+  setOvTitle('SLEEPING');setOvSub('SAY  "JARVIS"  OR  "HELLO JARVIS"  TO WAKE');
+  wave.classList.add('slow');wakeListening=true;
+  if(micGranted) setTimeout(startWakeListener,400);
+  else overlay.addEventListener('click',onOverlayClick);
+}
+
+function setAwake(val){
+  isAwake=val;
+  const pill=document.getElementById('wake-pill');
+  const arc=document.getElementById('arc-lbl');
+  if(val){
+    pill.textContent='◉ ACTIVE';pill.style.color='var(--grn)';
+    arc.textContent='ONLINE';arc.style.color='var(--grn)';arc.style.textShadow='0 0 10px rgba(0,255,136,.4)';
+    setStatus('st-jrv','ACTIVE','grn');
   } else {
-    micActive = false;
-    btn.classList.remove('active');
-    btn.textContent = '⏺ MIC';
-    socket.emit('mic_control', {action: 'stop'});
+    pill.textContent='◌ STANDBY';pill.style.color='';
+    arc.textContent='STANDBY';arc.style.color='';arc.style.textShadow='';
+    setStatus('st-jrv','STANDBY','');
   }
 }
+
+// ═══════════════════════════════════════
+//  WAKE WORD LISTENER
+// ═══════════════════════════════════════
+function startWakeListener(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  wakeListening=true;
+  wakeRecog=new SR();
+  wakeRecog.lang='en-IN';wakeRecog.continuous=false;wakeRecog.interimResults=false;wakeRecog.maxAlternatives=3;
+  wakeRecog.onresult=e=>{
+    for(let r=0;r<e.results.length;r++)
+      for(let a=0;a<e.results[r].length;a++){
+        const t=e.results[r][a].transcript.toLowerCase().trim();
+        if(WAKE_WORDS.some(w=>t.includes(w))){ activateJarvis(); return; }
+      }
+  };
+  wakeRecog.onend=()=>{ if(!isAwake&&wakeListening) setTimeout(startWakeListener,200); };
+  wakeRecog.onerror=e=>{
+    if(e.error!=='no-speech'&&e.error!=='aborted') log('Wake listener: '+e.error,'warn');
+    if(!isAwake&&wakeListening) setTimeout(startWakeListener,500);
+  };
+  try{ wakeRecog.start(); } catch(e){ setTimeout(startWakeListener,500); }
+}
+
+// ═══════════════════════════════════════
+//  COMMAND LISTENER
+// ═══════════════════════════════════════
+function startCommandListener(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  cmdRecog=new SR();
+  cmdRecog.lang='en-IN';cmdRecog.continuous=true;cmdRecog.interimResults=true;cmdRecog.maxAlternatives=1;
+  const inp=document.getElementById('cmd-in');
+  cmdRecog.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) final+=t; else interim+=t;
+    }
+    if(interim) inp.value=interim;
+    if(final){
+      const q=final.toLowerCase().trim();
+      inp.value=final;
+      log('🎤 Heard: '+final,'heard');
+      addUserBubble('🎤 '+final);
+      if(SLEEP_WORDS.some(w=>q.includes(w))){ sleepJarvis();inp.value='';return; }
+      if(WAKE_WORDS.some(w=>q.includes(w))){ log('Already online, sir.','ok');inp.value='';return; }
+      socket.emit('command',{query:q});
+      setTimeout(()=>{ inp.value=''; },2000);
+    }
+  };
+  cmdRecog.onerror=e=>{ if(e.error==='not-allowed') log('Mic access denied.','error'); };
+  cmdRecog.onend=()=>{ if(isAwake) setTimeout(startCommandListener,300); };
+  try{ cmdRecog.start(); } catch(e){ setTimeout(startCommandListener,500); }
+}
+
+// ═══════════════════════════════════════
+//  TYPED COMMAND
+// ═══════════════════════════════════════
+function sendCmd(){
+  const inp = document.getElementById('cmd-in');
+  const val = inp.value.trim();
+  if(!val) return;
+  // Add user bubble in chat mode
+  addUserBubble(val);
+  // Also log to terminal
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  const ts=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const tv=document.getElementById('terminal-view');
+  const d=document.createElement('div');d.className='tl input';
+  d.innerHTML=`<span class="tl-ts">${ts}</span><span class="tl-msg">› ${val}</span>`;
+  tv.appendChild(d);tv.scrollTop=tv.scrollHeight;
+  socket.emit('command',{query:val.toLowerCase()});
+  inp.value='';
+}
+document.getElementById('cmd-in').addEventListener('keydown',e=>{ if(e.key==='Enter') sendCmd(); });
+
+// ═══════════════════════════════════════
+//  MIC BUTTON
+// ═══════════════════════════════════════
+function toggleMic(){
+  const btn    = document.getElementById('mic-big-btn');
+  const btnTxt = document.getElementById('mic-btn-txt');
+  const stTxt  = document.getElementById('mic-status-txt');
+  const wave   = document.getElementById('mic-wave');
+
+  if(!isAwake){
+    if(micGranted) activateJarvis();
+    else log('Say "Jarvis" to wake first.','warn');
+    return;
+  }
+
+  if(micActive){
+    // STOP MIC
+    cmdRecog&&cmdRecog.stop();
+    micActive = false;
+    btn.classList.remove('mic-live');
+    btnTxt.textContent = 'ENABLE MICROPHONE';
+    stTxt.textContent  = 'MICROPHONE OFF';
+    wave.classList.remove('live');
+    document.getElementById('mic-lbl').textContent = 'MIC: OFF';
+    setStatus('st-mic','OFF','red');
+    log('Microphone disabled.','warn');
+    setTimeout(startCommandListener, 400);
+  } else {
+    // START MIC
+    micActive = true;
+    btn.classList.add('mic-live');
+    btnTxt.textContent = 'STOP MICROPHONE';
+    stTxt.textContent  = 'LISTENING...';
+    wave.classList.add('live');
+    document.getElementById('mic-lbl').textContent = 'MIC: ON';
+    setStatus('st-mic','ACTIVE','grn');
+    log('Microphone enabled — speak your command.','ok');
+  }
+}
+
+// ═══════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.activeElement===document.getElementById('cmd-in')) sendCmd();
+  if(e.key==='Escape'&&isAwake) sleepJarvis();
+  if((e.key==='w'||e.key==='W')&&e.altKey){ e.preventDefault(); isAwake?sleepJarvis():activateJarvis(); }
+});
+
+// ═══════════════════════════════════════
+//  START
+// ═══════════════════════════════════════
+log('J.A.R.V.I.S interface loaded.','sys');
+log('Security protocol active.','sys');
+boot();
 </script>
 </body>
 </html>
