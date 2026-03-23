@@ -1,9 +1,48 @@
-Flask
+# ─────────────────────────────────────────────────────────────
+#  J.A.R.V.I.S v3.0 — Requirements
+#  Install all:  pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────
+
+# ── Web Server ────────────────────────────────────────────────
+flask
+flask-socketio
+
+# ── Voice / Speech ────────────────────────────────────────────
 pyttsx3
-speechRecognition
+SpeechRecognition
+pyaudio              # microphone input (if fails: pip install pipwin && pipwin install pyaudio)
+
+# ── Web Scraping & Search ─────────────────────────────────────
 requests
 beautifulsoup4
-plyer
-pygame
+wikipedia
+pywhatkit            # YouTube auto-play
+
+# ── Browser Automation ────────────────────────────────────────
 pyautogui
+
+# ── System Monitoring ─────────────────────────────────────────
+psutil               # CPU, RAM, battery, disk info
+
+# ── Translation ───────────────────────────────────────────────
+deep-translator
+
+# ── Clipboard ─────────────────────────────────────────────────
+pyperclip
+
+# ── Notifications & Audio ─────────────────────────────────────
+plyer                # desktop notifications
+pygame               # audio/music playback
+
+# ── Speed Test ────────────────────────────────────────────────
 speedtest-cli
+
+# ── Jokes ─────────────────────────────────────────────────────
+pyjokes
+
+# ── WhatsApp (optional) ───────────────────────────────────────
+# pywhatkit is already listed above (handles WhatsApp too)
+
+# ── Standard Library (no install needed) ──────────────────────
+# datetime, os, sys, re, socket, platform, threading,
+# time, random, subprocess, webbrowser, urllib, json
