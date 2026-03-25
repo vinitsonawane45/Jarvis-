@@ -1,6 +1,6 @@
 # 🤖 J.A.R.V.I.S — Python Voice Assistant
 
-A Python-based personal AI voice assistant inspired by Iron Man's **J.A.R.V.I.S.** (Just A Rather Very Intelligent System). Jarvis listens to your voice commands and performs a wide range of tasks — from searching the web to setting alarms, sending WhatsApp messages, and more.
+A Python-based personal AI voice assistant inspired by Iron Man **J.A.R.V.I.S.** (Just A Rather Very Intelligent System). Jarvis listens to your voice commands and performs a wide range of tasks — from searching the web to setting alarms, sending WhatsApp messages, and more.
 
 > **v2.0 Update** — Now features a fully linked **Iron Man HUD-style web UI** powered by Flask + Socket.IO. All commands, voice input, and responses are handled in real time between the browser and Python backend.
 
