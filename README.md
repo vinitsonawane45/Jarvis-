@@ -8,7 +8,7 @@ A Python-based personal AI voice assistant inspired by Iron Man **J.A.R.V.I.S.**
 
 ## 🌟 Features
 
-| Feature | Description |
+| Features | Description |
 |---|---|
 | 🎙️ Voice Recognition | Listens and responds to voice commands via Python `SpeechRecognition` |
 | 🖥️ Web UI | Iron Man HUD-style interface linked live to the Python backend |
